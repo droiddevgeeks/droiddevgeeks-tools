@@ -25,6 +25,23 @@ personal skills directory:
 
 Invoked this way the skill is unnamespaced: just "audit the cli/cli repo".
 
+## Usage
+
+Once installed, just ask Claude Code in plain language. The skill triggers on
+phrasing about PR activity, contributors, or hotfix/revert counts.
+
+You can name the repo as `owner/name`, a GitHub URL, or `@username/repo` — Claude
+extracts the `owner/name` either way:
+
+    audit the cli/cli repo
+    how active is facebook/react over the last 4 weeks?
+    audit https://github.com/vercel/next.js
+    who's contributing to torvalds/linux this month?
+    how many hotfix or revert PRs did kubernetes/kubernetes have?
+
+Claude runs the audit and renders an HTML dashboard artifact titled
+`Repo Audit — <owner/name>`. If you don't give a repo, it asks for one.
+
 ## Requirements
 
 - `gh` CLI, authenticated (`gh auth status`)
@@ -32,11 +49,15 @@ Invoked this way the skill is unnamespaced: just "audit the cli/cli repo".
 
 ## Run the script directly
 
-From `skills/github-repo-audit/`:
+The underlying script takes `owner/name` (not a URL). From
+`skills/github-repo-audit/`:
 
-    python3 scripts/audit.py owner/name --weeks 4 --months 3
+    python3 scripts/audit.py cli/cli
+    python3 scripts/audit.py facebook/react --weeks 8 --months 6
+    python3 scripts/audit.py kubernetes/kubernetes --limit 1000
 
-Prints a JSON report to stdout.
+Flags: `--weeks N` (default 4), `--months N` (default 3), `--limit N`
+(default 500, the max PRs fetched). Prints a JSON report to stdout.
 
 ## Test
 
