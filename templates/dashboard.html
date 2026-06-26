@@ -1,0 +1,77 @@
+<div id="app"></div>
+<style>
+  #app { font-family: -apple-system, system-ui, sans-serif; max-width: 880px;
+         margin: 0 auto; padding: 24px; color: #1a1a1a; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 20px; }
+  .cards { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+  .card { flex: 1 1 110px; border: 1px solid #e3e3e3; border-radius: 10px;
+          padding: 12px 14px; }
+  .card .n { font-size: 24px; font-weight: 600; }
+  .card .l { font-size: 12px; color: #666; text-transform: uppercase;
+             letter-spacing: .04em; }
+  h2 { font-size: 15px; margin: 24px 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
+  th { color: #666; font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { height: 8px; background: #2563eb; border-radius: 4px; }
+  .wrap { overflow-x: auto; }
+</style>
+<script>
+  const DATA = {{DATA_JSON}};
+  const el = (t, p = {}, ...kids) => {
+    const n = Object.assign(document.createElement(t), p);
+    kids.forEach(k => n.append(k));
+    return n;
+  };
+  const app = document.getElementById("app");
+  const T = DATA.totals;
+  app.append(el("h1", { textContent: "Repo Audit — " + DATA.repo }));
+  app.append(el("div", { className: "sub",
+    textContent: `Window since ${DATA.window.since} · generated ${DATA.generated_at}` }));
+
+  const cards = el("div", { className: "cards" });
+  [["Opened", T.opened], ["Closed", T.closed], ["Merged", T.merged],
+   ["Hotfix", T.hotfix], ["Revert", T.revert], ["Contributors", T.contributors]]
+    .forEach(([l, n]) => cards.append(
+      el("div", { className: "card" },
+        el("div", { className: "n", textContent: n }),
+        el("div", { className: "l", textContent: l }))));
+  app.append(cards);
+
+  function flowTable(title, rows, labelKey, labelHead) {
+    app.append(el("h2", { textContent: title }));
+    const wrap = el("div", { className: "wrap" });
+    const tbl = el("table");
+    const head = el("tr");
+    [labelHead, "Opened", "Closed", "Merged"].forEach((h, i) =>
+      head.append(el("th", { textContent: h, className: i ? "num" : "" })));
+    tbl.append(head);
+    rows.forEach(r => {
+      const tr = el("tr");
+      tr.append(el("td", { textContent: r[labelKey] }));
+      ["opened", "closed", "merged"].forEach(k =>
+        tr.append(el("td", { className: "num", textContent: r[k] })));
+      tbl.append(tr);
+    });
+    wrap.append(tbl);
+    app.append(wrap);
+  }
+  flowTable("Weekly", DATA.weekly, "week_start", "Week of");
+  flowTable("Monthly", DATA.monthly, "month", "Month");
+
+  app.append(el("h2", { textContent: "Contributors" }));
+  const ct = el("table");
+  const ch = el("tr");
+  ["Author", "PRs"].forEach((h, i) =>
+    ch.append(el("th", { textContent: h, className: i ? "num" : "" })));
+  ct.append(ch);
+  DATA.contributors.forEach(c => {
+    const tr = el("tr");
+    tr.append(el("td", { textContent: c.login }));
+    tr.append(el("td", { className: "num", textContent: c.count }));
+    ct.append(tr);
+  });
+  app.append(ct);
+</script>
