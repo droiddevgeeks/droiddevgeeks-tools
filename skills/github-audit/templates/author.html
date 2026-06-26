@@ -1,0 +1,269 @@
+<div id="app"></div>
+<style>
+  :root {
+    --bg: #f6f8fa; --surface: #ffffff; --ink: #1f2328; --muted: #636c76;
+    --faint: #8c959f; --border: #d0d7de; --border-subtle: #eaeef2;
+    --accent: #0969da; --good: #1a7f37; --good-soft: #dafbe1;
+    --warn: #9a6700; --warn-soft: #fff8c5; --crit: #cf222e; --crit-soft: #ffebe9;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --radius: 12px; --shadow: 0 1px 2px rgba(31,35,40,.04), 0 4px 14px rgba(31,35,40,.05);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  #app {
+    font-family: var(--font-sans); color: var(--ink); background: var(--bg);
+    background-image: radial-gradient(1000px 440px at 88% -12%, rgba(9,105,218,.06), transparent 70%);
+    min-height: 100vh; padding: 40px 20px 72px; line-height: 1.5;
+  }
+  .shell { max-width: 1040px; margin: 0 auto; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600; margin: 0 0 10px; }
+  h1 { font-family: var(--font-mono); font-size: clamp(22px, 4vw, 32px); font-weight: 600;
+    margin: 0; letter-spacing: -.01em; word-break: break-word; }
+  h1 .at { color: var(--muted); font-weight: 500; }
+  .meta { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  .signals { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .signal { display: inline-flex; align-items: baseline; gap: 6px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px; padding: 6px 13px; font-size: 12.5px; color: var(--muted); }
+  .signal b { font-family: var(--font-mono); font-size: 13px; color: var(--ink); font-weight: 600; }
+  .signal.is-warn { background: var(--warn-soft); border-color: #eedfa0; color: var(--warn); }
+  .signal.is-warn b { color: var(--warn); }
+  .signal.is-good { background: var(--good-soft); border-color: #b4e6c1; color: var(--good); }
+  .signal.is-good b { color: var(--good); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 12px; margin: 28px 0 36px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 15px 15px 13px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--bar, var(--border)); }
+  .kpi .n { font-family: var(--font-mono); font-size: 26px; font-weight: 600; line-height: 1.1;
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .kpi .l { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 6px; font-weight: 600; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px 22px 22px; box-shadow: var(--shadow); margin-bottom: 20px; }
+  .panel h2 { font-size: 13px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink); margin: 0 0 2px; font-weight: 700; }
+  .panel .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 16px; }
+  .panel .hint b { font-family: var(--font-mono); color: var(--ink); font-weight: 600; }
+
+  .wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint);
+    font-weight: 600; text-align: right; padding: 0 0 10px; }
+  thead th:first-child { text-align: left; }
+  tbody td { padding: 9px 0; border-top: 1px solid var(--border-subtle); vertical-align: middle; }
+  td.period { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; padding-right: 18px; }
+  td.metric { width: 26%; }
+  .cell { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+  .cell .v { font-family: var(--font-mono); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 2.4ch; text-align: right; }
+  .track { flex: 1; height: 6px; background: var(--border-subtle); border-radius: 4px; overflow: hidden; max-width: 120px; }
+  .fill { height: 100%; width: 0; border-radius: 4px; transition: width .7s cubic-bezier(.2,.7,.2,1); }
+
+  .rterm { min-width: 640px; }
+  .rterm thead th, .rterm tbody td { text-align: right; white-space: nowrap; }
+  .rterm thead th:first-child, .rterm tbody td:first-child { text-align: left; width: 1%; }
+  .rterm tbody td { font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; padding: 10px 12px 10px 0; }
+  .rterm tbody td:first-child { padding-left: 0; }
+  .repo-cell { display: flex; align-items: center; gap: 9px; }
+  .repo-cell a { font-family: var(--font-mono); font-size: 12.5px; color: var(--accent); text-decoration: none; font-weight: 600; }
+  .repo-cell a:hover { text-decoration: underline; }
+  .obar { display: flex; align-items: center; justify-content: flex-end; gap: 9px; }
+  .obar .track { width: 72px; }
+  .v-good { color: var(--good); } .v-warn { color: var(--warn); } .v-faint { color: var(--faint); }
+
+  .rows { display: flex; flex-direction: column; gap: 11px; }
+  .row { display: grid; grid-template-columns: 110px 1fr auto; align-items: center; gap: 12px; }
+  .row .rl { font-family: var(--font-mono); font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .rtrack { height: 9px; background: var(--border-subtle); border-radius: 5px; overflow: hidden; }
+  .row .rfill { height: 100%; width: 0; border-radius: 5px; transition: width .7s cubic-bezier(.2,.7,.2,1); }
+  .row .rv { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; min-width: 3ch; }
+
+  .chiprow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .chip { font-size: 12px; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 5px 11px; }
+  .chip b { font-family: var(--font-mono); color: var(--ink); font-weight: 600; }
+  .chip.warn { background: var(--warn-soft); border-color: #eedfa0; color: var(--warn); }
+  .chip.warn b { color: var(--warn); }
+  .chip.crit { background: var(--crit-soft); border-color: #f7c7c9; color: var(--crit); }
+  .chip.crit b { color: var(--crit); }
+  .foot { text-align: center; color: var(--faint); font-size: 11.5px; margin-top: 28px; font-family: var(--font-mono); }
+  @media (prefers-reduced-motion: reduce) { .fill, .rfill { transition: none; } }
+</style>
+<script>
+  const DATA = {{DATA_JSON}};
+  const C = { accent: "#0969da", good: "#1a7f37", warn: "#9a6700", crit: "#cf222e", muted: "#8c959f" };
+  const fmt = n => (typeof n === "number" ? n.toLocaleString() : (n == null ? "—" : n));
+  const el = (t, p = {}, ...kids) => {
+    const n = Object.assign(document.createElement(t), p);
+    for (const k of kids) if (k != null) n.append(k);
+    return n;
+  };
+  const fills = [];
+  const fill = (cls, pct, color) => {
+    const f = el("div", { className: cls });
+    f.style.background = color;
+    f.dataset.w = Math.max(pct, pct > 0 ? 4 : 0) + "%";
+    fills.push(f); return f;
+  };
+
+  document.title = "Contribution Audit — " + DATA.author;
+  const app = el("div", { className: "shell" });
+  const T = DATA.totals;
+
+  app.append(el("p", { className: "eyebrow", textContent: "Contribution Audit" }));
+  const h1 = el("h1");
+  h1.append(el("span", { className: "at", textContent: "@" }));
+  h1.append(document.createTextNode(DATA.author));
+  app.append(h1);
+  app.append(el("p", { className: "meta",
+    textContent: `PRs authored across all repos · window since ${DATA.window.since} · generated ${DATA.generated_at}` }));
+
+  const sig = el("div", { className: "signals" });
+  const addSignal = (label, value, cls) => {
+    const s = el("div", { className: "signal" + (cls ? " " + cls : "") });
+    s.append(el("b", { textContent: value })); s.append(document.createTextNode(label));
+    sig.append(s);
+  };
+  addSignal("merge rate", T.merge_rate + "%", T.merge_rate >= 60 ? "is-good" : T.merge_rate < 35 ? "is-warn" : "");
+  addSignal("repos touched", String(T.repos));
+  addSignal("orgs", String(T.orgs));
+  addSignal("stale open PRs", String(T.stale), T.stale > 0 ? "is-warn" : "is-good");
+  app.append(sig);
+
+  const kpis = el("div", { className: "kpis" });
+  const card = (label, value, color) => {
+    const c = el("div", { className: "kpi" });
+    c.style.setProperty("--bar", color);
+    c.append(el("div", { className: "n", textContent: fmt(value) }));
+    c.append(el("div", { className: "l", textContent: label }));
+    return c;
+  };
+  kpis.append(card("Opened", T.opened, C.accent));
+  kpis.append(card("Merged", T.merged, C.good));
+  kpis.append(card("Rejected", T.closed, T.closed > 0 ? C.warn : C.muted));
+  kpis.append(card("Merge rate", T.merge_rate + "%", T.merge_rate >= 60 ? C.good : C.warn));
+  kpis.append(card("Repos", T.repos, C.accent));
+  kpis.append(card("Orgs", T.orgs, C.accent));
+  kpis.append(card("Open", T.open_backlog, C.muted));
+  kpis.append(card("Stale 30d+", T.stale, T.stale > 0 ? C.warn : C.muted));
+  app.append(kpis);
+
+  function trendPanel(title, rows, labelKey) {
+    const panel = el("div", { className: "panel" });
+    panel.append(el("h2", { textContent: title }));
+    panel.append(el("p", { className: "hint", textContent: "PRs you opened, got merged, and had closed unmerged — each bucketed by its own date." }));
+    const max = Math.max(1, ...rows.flatMap(r => [r.opened, r.merged, r.closed]));
+    const wrap = el("div", { className: "wrap" });
+    const tbl = el("table");
+    const thead = el("thead"), htr = el("tr");
+    [labelKey === "week_start" ? "Week of" : "Month", "Opened", "Merged", "Rejected"]
+      .forEach(h => htr.append(el("th", { textContent: h })));
+    thead.append(htr); tbl.append(thead);
+    const tb = el("tbody");
+    rows.forEach(r => {
+      const tr = el("tr");
+      tr.append(el("td", { className: "period", textContent: r[labelKey] }));
+      [["opened", C.accent], ["merged", C.good], ["closed", C.warn]].forEach(([k, col]) => {
+        const td = el("td", { className: "metric" });
+        const cell = el("div", { className: "cell" });
+        const track = el("div", { className: "track" });
+        track.append(fill("fill", (r[k] / max) * 100, col));
+        cell.append(track);
+        cell.append(el("span", { className: "v", textContent: r[k] }));
+        td.append(cell); tr.append(td);
+      });
+      tb.append(tr);
+    });
+    tbl.append(tb); wrap.append(tbl); panel.append(wrap);
+    return panel;
+  }
+  app.append(trendPanel("Weekly", DATA.weekly, "week_start"));
+  app.append(trendPanel("Monthly", DATA.monthly, "month"));
+
+  if (DATA.repos && DATA.repos.length) {
+    const panel = el("div", { className: "panel" });
+    panel.append(el("h2", { textContent: "By Repository" }));
+    panel.append(el("p", { className: "hint", innerHTML: `<b>${T.repos}</b> repos across <b>${T.orgs}</b> orgs, ranked by PRs opened + merged in the window.` }));
+    const max = Math.max(1, ...DATA.repos.map(r => r.opened + r.merged));
+    const wrap = el("div", { className: "wrap" });
+    const tbl = el("table", { className: "rterm" });
+    const thead = el("thead"), htr = el("tr");
+    ["Repository", "Opened", "Merged", "Rejected", "Open"].forEach(h => htr.append(el("th", { textContent: h })));
+    thead.append(htr); tbl.append(thead);
+    const tb = el("tbody");
+    DATA.repos.forEach(r => {
+      const tr = el("tr");
+      const c0 = el("td");
+      const rc = el("div", { className: "repo-cell" });
+      rc.append(el("a", { href: "https://github.com/" + r.repo, target: "_blank", rel: "noopener", textContent: r.repo }));
+      c0.append(rc); tr.append(c0);
+      const cO = el("td");
+      const ob = el("div", { className: "obar" });
+      const track = el("div", { className: "track" });
+      track.append(fill("fill", ((r.opened + r.merged) / (max * 2)) * 100 * 2, C.accent));
+      ob.append(track); ob.append(el("span", { textContent: r.opened }));
+      cO.append(ob); tr.append(cO);
+      tr.append(el("td", { className: r.merged > 0 ? "v-good" : "", textContent: r.merged }));
+      tr.append(el("td", { className: r.closed > 0 ? "v-warn" : "v-faint", textContent: r.closed }));
+      tr.append(el("td", { className: r.open > 0 ? "" : "v-faint", textContent: r.open }));
+      tb.append(tr);
+    });
+    tbl.append(tb); wrap.append(tbl); panel.append(wrap);
+    app.append(panel);
+  }
+
+  const grid = el("div", { className: "grid2" });
+  if (DATA.orgs && DATA.orgs.length) {
+    const panel = el("div", { className: "panel" });
+    panel.append(el("h2", { textContent: "By Org" }));
+    panel.append(el("p", { className: "hint", textContent: "Where your merged work landed." }));
+    const max = Math.max(1, ...DATA.orgs.map(o => o.opened + o.merged));
+    const rows = el("div", { className: "rows" });
+    DATA.orgs.forEach(o => {
+      const row = el("div", { className: "row" });
+      row.append(el("div", { className: "rl", title: o.owner, textContent: o.owner }));
+      const track = el("div", { className: "rtrack" });
+      track.append(fill("rfill", ((o.opened + o.merged) / (max * 2)) * 100, C.accent));
+      row.append(track);
+      row.append(el("div", { className: "rv", textContent: `${o.merged}/${o.opened}` }));
+      rows.append(row);
+    });
+    panel.append(rows);
+    panel.append(el("p", { className: "hint", style: "margin:14px 0 0", textContent: "shown as merged / opened" }));
+    grid.append(panel);
+  }
+  if (DATA.backlog) {
+    const B = DATA.backlog;
+    const ageColor = { "<7d": C.good, "7-30d": C.accent, "30-90d": C.warn, ">90d": C.crit };
+    const panel = el("div", { className: "panel" });
+    panel.append(el("h2", { textContent: "Your Open PRs" }));
+    const chips = el("div", { className: "chiprow" });
+    const chip = (txt, val, cls) => {
+      const c = el("div", { className: "chip" + (cls ? " " + cls : "") });
+      c.append(el("b", { textContent: val })); c.append(document.createTextNode(" " + txt));
+      return c;
+    };
+    chips.append(chip("open", B.open_total));
+    chips.append(chip("stale 30d+", B.stale_30d, B.stale_30d > 0 ? "warn" : ""));
+    if (B.oldest_days != null) chips.append(chip("days oldest", B.oldest_days, B.oldest_days > 90 ? "crit" : ""));
+    panel.append(chips);
+    const max = Math.max(1, ...B.age_buckets.map(b => b.count));
+    const rows = el("div", { className: "rows" });
+    B.age_buckets.forEach(b => {
+      const row = el("div", { className: "row" });
+      row.append(el("div", { className: "rl", textContent: b.label }));
+      const track = el("div", { className: "rtrack" });
+      track.append(fill("rfill", (b.count / max) * 100, ageColor[b.label] || C.muted));
+      row.append(track);
+      row.append(el("div", { className: "rv", textContent: b.count }));
+      rows.append(row);
+    });
+    panel.append(rows);
+    grid.append(panel);
+  }
+  if (grid.childElementCount) app.append(grid);
+
+  app.append(el("p", { className: "foot", textContent: "@" + DATA.author + " · " + DATA.generated_at }));
+  document.getElementById("app").append(app);
+  requestAnimationFrame(() => requestAnimationFrame(() => fills.forEach(f => { f.style.width = f.dataset.w; })));
+</script>

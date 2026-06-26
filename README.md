@@ -1,8 +1,22 @@
 # droiddevgeeks-tools
 
-A Claude Code plugin of droiddevgeeks's tools. Currently ships one skill,
-**github-audit**, which audits one GitHub repo's PR activity and renders a
-self-contained HTML dashboard.
+A Claude Code plugin of droiddevgeeks's tools. Ships one skill, **github-audit**,
+which audits GitHub pull-request activity and renders a self-contained HTML
+dashboard (published as a Claude Artifact).
+
+## What it does — three modes
+
+The reference you give decides the mode:
+
+| Mode | Input | Answers | Script | Template |
+|------|-------|---------|--------|----------|
+| **Repo** | `owner/name` | How healthy is one repo's PR flow? | `scripts/audit.py` | `templates/dashboard.html` |
+| **Portfolio** | `owner` (user/org) | What do this account's *owned repos* look like? | `scripts/audit_user.py` | `templates/portfolio.html` |
+| **Contributions** | `username` | What has this *person* shipped, across every repo? | `scripts/audit_author.py` | `templates/author.html` |
+
+> **Repo vs. Contributions** — a portfolio of a *personal* account only sees repos
+> that account *owns* (often just forks). To see a person's actual work in
+> org-owned repos they contribute to, use the contributions mode.
 
 ## Install (plugin — recommended)
 
@@ -11,60 +25,62 @@ This repo is both the plugin and its own marketplace. In Claude Code:
     /plugin marketplace add droiddevgeeks/droiddevgeeks-tools
     /plugin install droiddevgeeks-tools@droiddevgeeks
 
-Then invoke it: "audit the cli/cli repo". The skill is namespaced as
-`/droiddevgeeks-tools:github-audit` (plugin name : skill name).
-
-To update later, bump the version and the plugin manager pulls the new release.
-
-## Install (manual copy — alternative)
-
-If you'd rather not use the plugin system, copy just the skill folder into your
-personal skills directory:
-
-    git clone https://github.com/droiddevgeeks/droiddevgeeks-tools /tmp/droiddevgeeks-tools
-    cp -r /tmp/droiddevgeeks-tools/skills/github-audit ~/.claude/skills/github-audit
-
-Invoked this way the skill is unnamespaced: just "audit the cli/cli repo".
+Then invoke it in plain language (e.g. "audit the cli/cli repo"). The skill is
+namespaced as `/droiddevgeeks-tools:github-audit`. To update later, bump the
+version in `plugin.json`, push, and run `/plugin update droiddevgeeks-tools`.
 
 ## Usage
 
-Once installed, just ask Claude Code in plain language. The skill triggers on
-phrasing about PR activity, contributors, or hotfix/revert counts.
-
-You can name the repo as `owner/name`, a GitHub URL, or `@username/repo` — Claude
-extracts the `owner/name` either way:
+Ask Claude Code in plain language — it picks the mode and extracts the target from
+`owner/name`, a bare `owner`, a `username`, or any GitHub URL:
 
     audit the cli/cli repo
-    how active is facebook/react over the last 4 weeks?
     audit https://github.com/vercel/next.js
-    who's contributing to torvalds/linux this month?
-    how many hotfix or revert PRs did kubernetes/kubernetes have?
+    show me cashfree-tech's repo portfolio
+    what has kishan-cashfree contributed across all repos?
 
-Claude runs the audit and renders an HTML dashboard artifact titled
-`Repo Audit — <owner/name>`. If you don't give a repo, it asks for one.
+## Run the scripts directly
+
+From `skills/github-audit/`:
+
+    # Single repo
+    python3 scripts/audit.py cli/cli
+    python3 scripts/audit.py https://github.com/facebook/react --weeks 8 --months 6
+
+    # Whole user/org portfolio (one call per repo; sorted by activity)
+    python3 scripts/audit_user.py cashfree-tech --repo-limit 50
+
+    # One person's PRs across all repos and orgs
+    python3 scripts/audit_author.py kishan-cashfree
+
+Common flags: `--weeks N` (4), `--months N` (3), `--limit N` (PRs fetched — 500 for
+repo/portfolio, 1000 for author). Portfolio adds `--repo-limit N` (300). Each script
+prints JSON to stdout; the skill substitutes it into the matching template's
+`{{DATA_JSON}}` token.
+
+## What's measured
+
+- **Flow** — PRs opened / merged / closed, weekly and monthly (each by its own date).
+- **Contributors** — ranked by PRs authored, with bots (`app/*`, `*[bot]`,
+  dependabot, renovate) detected and shown muted.
+- **Backlog** — open PRs by age (`<7d / 7–30d / 30–90d / >90d`), stale count
+  (no activity 30d+), and oldest open PR.
+- **PR size** — lines-changed distribution (XS→XL), median, p90, largest PR.
+  *(Repo and portfolio modes only — `gh search` omits diff size, so the
+  contributions mode has no size data.)*
+- **Hotfix / revert** counts (repo mode).
 
 ## Requirements
 
-- `gh` CLI, authenticated (`gh auth status`)
-- Python 3 (standard library only)
-
-## Run the script directly
-
-The underlying script takes `owner/name` (not a URL). From
-`skills/github-audit/`:
-
-    python3 scripts/audit.py cli/cli
-    python3 scripts/audit.py facebook/react --weeks 8 --months 6
-    python3 scripts/audit.py kubernetes/kubernetes --limit 1000
-
-Flags: `--weeks N` (default 4), `--months N` (default 3), `--limit N`
-(default 500, the max PRs fetched). Prints a JSON report to stdout.
+- `gh` CLI, authenticated (`gh auth status`). All counting is done by the scripts;
+  numbers are never estimated. Transient `gh` 5xx/network errors auto-retry.
+- Python 3 (standard library only — no dependencies).
 
 ## Test
 
 From `skills/github-audit/`:
 
-    python3 -m unittest discover -s tests -v
+    python3 -m unittest discover -s tests -t . -v
 
 ## Layout
 
@@ -74,6 +90,17 @@ From `skills/github-audit/`:
     skills/
       github-audit/
         SKILL.md           # skill instructions (name: github-audit)
-        scripts/audit.py   # gh fetch + bucketing, emits JSON
-        templates/         # self-contained HTML dashboard shell
+        scripts/
+          audit.py         # single-repo audit + shared core
+          audit_user.py    # user/org portfolio
+          audit_author.py  # author contributions
+        templates/         # dashboard.html, portfolio.html, author.html
         tests/             # unittest suite
+
+## Notes
+
+- `opened` / `closed` / `merged` are bucketed independently, so a PR opened in one
+  period and merged in another contributes to different buckets.
+- If a script warns `hit --limit` / `hit --repo-limit`, re-run with a higher cap —
+  the backlog metric needs full coverage, since newest-first fetching truncates the
+  oldest (and often most stale) open PRs.

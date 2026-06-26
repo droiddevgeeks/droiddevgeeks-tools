@@ -1,77 +1,359 @@
 <div id="app"></div>
 <style>
-  #app { font-family: -apple-system, system-ui, sans-serif; max-width: 880px;
-         margin: 0 auto; padding: 24px; color: #1a1a1a; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  .sub { color: #666; font-size: 13px; margin-bottom: 20px; }
-  .cards { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
-  .card { flex: 1 1 110px; border: 1px solid #e3e3e3; border-radius: 10px;
-          padding: 12px 14px; }
-  .card .n { font-size: 24px; font-weight: 600; }
-  .card .l { font-size: 12px; color: #666; text-transform: uppercase;
-             letter-spacing: .04em; }
-  h2 { font-size: 15px; margin: 24px 0 8px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
-  th { color: #666; font-weight: 600; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  .bar { height: 8px; background: #2563eb; border-radius: 4px; }
+  :root {
+    --bg: #f6f8fa;
+    --surface: #ffffff;
+    --ink: #1f2328;
+    --muted: #636c76;
+    --faint: #8c959f;
+    --border: #d0d7de;
+    --border-subtle: #eaeef2;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --good: #1a7f37;
+    --good-soft: #dafbe1;
+    --warn: #9a6700;
+    --warn-soft: #fff8c5;
+    --crit: #cf222e;
+    --crit-soft: #ffebe9;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(31,35,40,.04), 0 4px 14px rgba(31,35,40,.05);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  #app {
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background: var(--bg);
+    background-image:
+      radial-gradient(900px 400px at 85% -10%, rgba(9,105,218,.06), transparent 70%);
+    min-height: 100vh;
+    padding: 40px 20px 72px;
+    line-height: 1.5;
+  }
+  .shell { max-width: 980px; margin: 0 auto; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--font-mono);
+    font-size: clamp(22px, 4vw, 32px); font-weight: 600;
+    margin: 0; letter-spacing: -.01em; text-wrap: balance; word-break: break-word;
+  }
+  h1 .owner { color: var(--muted); font-weight: 500; }
+  .meta { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  .signals { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .signal {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 999px; padding: 6px 13px; font-size: 12.5px; color: var(--muted);
+  }
+  .signal b { font-family: var(--font-mono); font-size: 13px; color: var(--ink); font-weight: 600; }
+  .signal.is-warn { background: var(--warn-soft); border-color: #eedfa0; color: var(--warn); }
+  .signal.is-warn b { color: var(--warn); }
+  .signal.is-good { background: var(--good-soft); border-color: #b4e6c1; color: var(--good); }
+  .signal.is-good b { color: var(--good); }
+
+  .kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px; margin: 28px 0 36px;
+  }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 16px 14px; box-shadow: var(--shadow);
+    position: relative; overflow: hidden;
+  }
+  .kpi::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--bar, var(--border));
+  }
+  .kpi .n { font-family: var(--font-mono); font-size: 28px; font-weight: 600;
+            line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .kpi .l { font-size: 11px; letter-spacing: .07em; text-transform: uppercase;
+            color: var(--muted); margin-top: 6px; font-weight: 600; }
+  .kpi .sub { font-size: 11.5px; color: var(--faint); margin-top: 3px; font-family: var(--font-mono); }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 22px 22px; box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+  .panel h2 {
+    font-size: 13px; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--ink); margin: 0 0 2px; font-weight: 700;
+  }
+  .panel .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 16px; }
+  .panel .hint b { font-family: var(--font-mono); color: var(--ink); font-weight: 600; }
+
   .wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--faint); font-weight: 600; text-align: right; padding: 0 0 10px;
+  }
+  thead th:first-child { text-align: left; }
+  tbody td { padding: 9px 0; border-top: 1px solid var(--border-subtle); vertical-align: middle; }
+  td.period { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; padding-right: 18px; }
+  td.metric { width: 28%; }
+  .cell { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+  .cell .v { font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+             font-variant-numeric: tabular-nums; min-width: 2.4ch; text-align: right; }
+  .track { flex: 1; height: 6px; background: var(--border-subtle); border-radius: 4px; overflow: hidden; max-width: 120px; }
+  .fill { height: 100%; width: 0; border-radius: 4px; transition: width .7s cubic-bezier(.2,.7,.2,1); }
+
+  .rows { display: flex; flex-direction: column; gap: 11px; }
+  .row { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 12px; }
+  .row .rl { font-size: 12.5px; color: var(--muted); }
+  .row .rl.mono { font-family: var(--font-mono); font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .rtrack { height: 9px; background: var(--border-subtle); border-radius: 5px; overflow: hidden; }
+  .row .rfill { height: 100%; width: 0; border-radius: 5px; transition: width .7s cubic-bezier(.2,.7,.2,1); }
+  .row .rv { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; color: var(--ink);
+             font-variant-numeric: tabular-nums; text-align: right; min-width: 3ch; }
+  .row.wide { grid-template-columns: 132px 1fr auto; }
+
+  .pill {
+    display: inline-block; font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 5px;
+    margin-left: 7px; vertical-align: middle; background: var(--border-subtle); color: var(--muted);
+  }
+  .chiprow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .chip { font-size: 12px; color: var(--muted); background: var(--bg);
+          border: 1px solid var(--border); border-radius: 8px; padding: 5px 11px; }
+  .chip b { font-family: var(--font-mono); color: var(--ink); font-weight: 600; }
+  .chip.warn { background: var(--warn-soft); border-color: #eedfa0; color: var(--warn); }
+  .chip.warn b { color: var(--warn); }
+  .chip.crit { background: var(--crit-soft); border-color: #f7c7c9; color: var(--crit); }
+  .chip.crit b { color: var(--crit); }
+  .chip.good { background: var(--good-soft); border-color: #b4e6c1; color: var(--good); }
+  .chip.good b { color: var(--good); }
+
+  .foot { text-align: center; color: var(--faint); font-size: 11.5px; margin-top: 28px; font-family: var(--font-mono); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fill, .rfill { transition: none; }
+  }
 </style>
 <script>
   const DATA = {{DATA_JSON}};
+
+  const C = {
+    accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#0969da",
+    good: "#1a7f37", warn: "#9a6700", crit: "#cf222e", muted: "#8c959f",
+  };
+  const fmt = n => (typeof n === "number" ? n.toLocaleString() : n);
   const el = (t, p = {}, ...kids) => {
     const n = Object.assign(document.createElement(t), p);
-    kids.forEach(k => n.append(k));
+    for (const k of kids) if (k != null) n.append(k);
     return n;
   };
-  const app = document.getElementById("app");
+  const fills = [];
+  const fill = (cls, pct, color) => {
+    const f = el("div", { className: cls });
+    f.style.background = color;
+    f.dataset.w = Math.max(pct, pct > 0 ? 3 : 0) + "%";
+    fills.push(f);
+    return f;
+  };
+
+  document.title = "Repo Audit — " + DATA.repo;
+  const app = el("div", { className: "shell" });
+
+  const [owner, name] = DATA.repo.split("/");
+  app.append(el("p", { className: "eyebrow", textContent: "Repository Audit" }));
+  const h1 = el("h1");
+  if (name) { h1.append(el("span", { className: "owner", textContent: owner + "/" })); h1.append(document.createTextNode(name)); }
+  else h1.append(document.createTextNode(DATA.repo));
+  app.append(h1);
+  app.append(el("p", { className: "meta",
+    textContent: `Window since ${DATA.window.since} · ${DATA.window.weeks}-week / ${DATA.window.months}-month view · generated ${DATA.generated_at}` }));
+
   const T = DATA.totals;
-  app.append(el("h1", { textContent: "Repo Audit — " + DATA.repo }));
-  app.append(el("div", { className: "sub",
-    textContent: `Window since ${DATA.window.since} · generated ${DATA.generated_at}` }));
+  const sig = el("div", { className: "signals" });
+  const addSignal = (label, value, cls) => {
+    const s = el("div", { className: "signal" + (cls ? " " + cls : "") });
+    s.append(el("b", { textContent: value }));
+    s.append(document.createTextNode(label));
+    sig.append(s);
+  };
+  if (T.opened) {
+    const rate = Math.round((T.merged / T.opened) * 100);
+    addSignal("merge rate", rate + "%", rate >= 60 ? "is-good" : rate < 35 ? "is-warn" : "");
+  }
+  const isBot = l => /^app\//.test(l) || /\[bot\]|-bot$|^dependabot|^renovate/i.test(l);
+  const botPRs = (DATA.contributors || []).filter(c => isBot(c.login)).reduce((a, c) => a + c.count, 0);
+  if (T.opened) {
+    const share = Math.round((botPRs / T.opened) * 100);
+    if (botPRs > 0) addSignal("from bots", share + "%", share >= 50 ? "is-warn" : "");
+  }
+  if (DATA.backlog) {
+    addSignal("stale open PRs", String(DATA.backlog.stale_30d),
+      DATA.backlog.stale_30d > 0 ? "is-warn" : "is-good");
+  }
+  app.append(sig);
 
-  const cards = el("div", { className: "cards" });
-  [["Opened", T.opened], ["Closed", T.closed], ["Merged", T.merged],
-   ["Hotfix", T.hotfix], ["Revert", T.revert], ["Contributors", T.contributors]]
-    .forEach(([l, n]) => cards.append(
-      el("div", { className: "card" },
-        el("div", { className: "n", textContent: n }),
-        el("div", { className: "l", textContent: l }))));
-  app.append(cards);
+  const kpis = el("div", { className: "kpis" });
+  const card = (label, value, color, sub) => {
+    const c = el("div", { className: "kpi" });
+    c.style.setProperty("--bar", color);
+    c.append(el("div", { className: "n", textContent: fmt(value) }));
+    c.append(el("div", { className: "l", textContent: label }));
+    if (sub) c.append(el("div", { className: "sub", textContent: sub }));
+    return c;
+  };
+  kpis.append(card("Opened", T.opened, C.accent));
+  kpis.append(card("Merged", T.merged, C.good,
+    T.opened ? Math.round((T.merged / T.opened) * 100) + "% of opened" : null));
+  kpis.append(card("Closed", T.closed, C.muted));
+  kpis.append(card("Contributors", T.contributors, C.accent,
+    botPRs > 0 ? botPRs + " PRs by bots" : null));
+  kpis.append(card("Hotfix", T.hotfix, T.hotfix > 0 ? C.warn : C.muted));
+  kpis.append(card("Revert", T.revert, T.revert > 0 ? C.crit : C.muted));
+  app.append(kpis);
 
-  function flowTable(title, rows, labelKey, labelHead) {
-    app.append(el("h2", { textContent: title }));
+  function trendPanel(title, rows, labelKey) {
+    const panel = el("div", { className: "panel" });
+    panel.append(el("h2", { textContent: title }));
+    panel.append(el("p", { className: "hint", textContent: "PRs opened, merged and closed — bucketed by their own timestamp." }));
+    const max = Math.max(1, ...rows.flatMap(r => [r.opened, r.merged, r.closed]));
     const wrap = el("div", { className: "wrap" });
     const tbl = el("table");
-    const head = el("tr");
-    [labelHead, "Opened", "Closed", "Merged"].forEach((h, i) =>
-      head.append(el("th", { textContent: h, className: i ? "num" : "" })));
-    tbl.append(head);
+    const thead = el("thead"), htr = el("tr");
+    [labelKey === "week_start" ? "Week of" : "Month", "Opened", "Merged", "Closed"]
+      .forEach(h => htr.append(el("th", { textContent: h })));
+    thead.append(htr); tbl.append(thead);
+    const tb = el("tbody");
     rows.forEach(r => {
       const tr = el("tr");
-      tr.append(el("td", { textContent: r[labelKey] }));
-      ["opened", "closed", "merged"].forEach(k =>
-        tr.append(el("td", { className: "num", textContent: r[k] })));
-      tbl.append(tr);
+      tr.append(el("td", { className: "period", textContent: r[labelKey] }));
+      [["opened", C.accent], ["merged", C.good], ["closed", C.muted]].forEach(([k, col]) => {
+        const td = el("td", { className: "metric" });
+        const cell = el("div", { className: "cell" });
+        const track = el("div", { className: "track" });
+        track.append(fill("fill", (r[k] / max) * 100, col));
+        cell.append(track);
+        cell.append(el("span", { className: "v", textContent: r[k] }));
+        td.append(cell); tr.append(td);
+      });
+      tb.append(tr);
     });
-    wrap.append(tbl);
-    app.append(wrap);
+    tbl.append(tb); wrap.append(tbl); panel.append(wrap);
+    return panel;
   }
-  flowTable("Weekly", DATA.weekly, "week_start", "Week of");
-  flowTable("Monthly", DATA.monthly, "month", "Month");
+  app.append(trendPanel("Weekly Flow", DATA.weekly, "week_start"));
+  app.append(trendPanel("Monthly Flow", DATA.monthly, "month"));
 
-  app.append(el("h2", { textContent: "Contributors" }));
-  const ct = el("table");
-  const ch = el("tr");
-  ["Author", "PRs"].forEach((h, i) =>
-    ch.append(el("th", { textContent: h, className: i ? "num" : "" })));
-  ct.append(ch);
-  DATA.contributors.forEach(c => {
-    const tr = el("tr");
-    tr.append(el("td", { textContent: c.login }));
-    tr.append(el("td", { className: "num", textContent: c.count }));
-    ct.append(tr);
-  });
-  app.append(ct);
+  function barRows(items, { label, value, color, wide }) {
+    const max = Math.max(1, ...items.map(value));
+    const rows = el("div", { className: "rows" });
+    items.forEach(it => {
+      const row = el("div", { className: "row" + (wide ? " wide" : "") });
+      row.append(label(it));
+      const track = el("div", { className: "rtrack" });
+      track.append(fill("rfill", (value(it) / max) * 100, color(it)));
+      row.append(track);
+      row.append(el("div", { className: "rv", textContent: fmt(value(it)) }));
+      rows.append(row);
+    });
+    return rows;
+  }
+
+  const grid = el("div", { className: "grid2" });
+
+  if (DATA.backlog) {
+    const B = DATA.backlog;
+    const ageColor = { "<7d": C.good, "7-30d": C.accent, "30-90d": C.warn, ">90d": C.crit };
+    const panel = el("div", { className: "panel" });
+    panel.append(el("h2", { textContent: "Open-PR Backlog" }));
+    const chips = el("div", { className: "chiprow" });
+    const chip = (txt, val, cls) => {
+      const c = el("div", { className: "chip" + (cls ? " " + cls : "") });
+      c.append(el("b", { textContent: val })); c.append(document.createTextNode(" " + txt));
+      return c;
+    };
+    chips.append(chip("open", B.open_total, "good"));
+    chips.append(chip("stale 30d+", B.stale_30d, B.stale_30d > 0 ? "warn" : ""));
+    if (B.oldest_days != null)
+      chips.append(chip("days oldest", B.oldest_days, B.oldest_days > 90 ? "crit" : ""));
+    panel.append(chips);
+    panel.append(barRows(B.age_buckets, {
+      label: b => el("div", { className: "rl", textContent: b.label }),
+      value: b => b.count,
+      color: b => ageColor[b.label] || C.muted,
+    }));
+    grid.append(panel);
+  }
+
+  if (DATA.size) {
+    const S = DATA.size;
+    const sizeColor = { XS: C.good, S: C.good, M: C.accent, L: C.warn, XL: C.crit };
+    const panel = el("div", { className: "panel" });
+    panel.append(el("h2", { textContent: "PR Size" }));
+    const chips = el("div", { className: "chiprow" });
+    const chip = (txt, val, cls) => {
+      const c = el("div", { className: "chip" + (cls ? " " + cls : "") });
+      c.append(el("b", { textContent: val })); c.append(document.createTextNode(" " + txt));
+      return c;
+    };
+    chips.append(chip("median lines", fmt(S.median_lines)));
+    chips.append(chip("p90 lines", fmt(S.p90_lines), S.p90_lines > 800 ? "warn" : ""));
+    if (S.largest)
+      chips.append(chip("largest (#" + S.largest.number + ")", fmt(S.largest.lines) + " ln",
+        S.largest.lines > 5000 ? "crit" : ""));
+    panel.append(chips);
+    panel.append(barRows(S.buckets, {
+      label: b => {
+        const d = el("div", { className: "rl" });
+        d.append(document.createTextNode(b.label + " "));
+        d.append(el("span", { style: "color:var(--faint);font-family:var(--font-mono);font-size:11px",
+          textContent: b.range }));
+        return d;
+      },
+      value: b => b.count,
+      color: b => sizeColor[b.label] || C.muted,
+    }));
+    grid.append(panel);
+  }
+  if (grid.childElementCount) app.append(grid);
+
+  const contribs = DATA.contributors || [];
+  if (contribs.length) {
+    const panel = el("div", { className: "panel" });
+    panel.append(el("h2", { textContent: "Contributors" }));
+    const humans = contribs.filter(c => !isBot(c.login)).length;
+    const bots = contribs.length - humans;
+    panel.append(el("p", { className: "hint",
+      innerHTML: `<b>${humans}</b> human${humans === 1 ? "" : "s"}` +
+        (bots ? ` · <b>${bots}</b> bot${bots === 1 ? "" : "s"} (${botPRs} PRs) shown muted` : "") +
+        ". Ranked by PRs authored." }));
+    const top = contribs.slice(0, 20);
+    panel.append(barRows(top, {
+      wide: true,
+      label: c => {
+        const d = el("div", { className: "rl mono", title: c.login });
+        const display = c.login.replace(/^app\//, "");
+        d.append(document.createTextNode(display));
+        if (isBot(c.login)) d.append(el("span", { className: "pill", textContent: "bot" }));
+        return d;
+      },
+      value: c => c.count,
+      color: c => isBot(c.login) ? C.muted : C.accent,
+    }));
+    if (contribs.length > 20)
+      panel.append(el("p", { className: "hint", style: "margin:14px 0 0",
+        textContent: `+ ${contribs.length - 20} more contributors not shown.` }));
+    app.append(panel);
+  }
+
+  app.append(el("p", { className: "foot", textContent: DATA.repo + " · " + DATA.generated_at }));
+
+  document.getElementById("app").append(app);
+
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    fills.forEach(f => { f.style.width = f.dataset.w; })));
 </script>

@@ -8,7 +8,7 @@
     {
       "name": "droiddevgeeks-tools",
       "source": "./",
-      "description": "droiddevgeeks's Claude Code tools. Includes github-audit: audit a GitHub repo's pull-request activity and render a self-contained HTML dashboard."
+      "description": "droiddevgeeks's Claude Code tools. Includes github-audit: audit GitHub PR activity for a repo, a user/org portfolio, or one person's contributions, rendered as a self-contained HTML dashboard."
     }
   ]
 }

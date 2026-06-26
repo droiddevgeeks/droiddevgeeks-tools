@@ -1,0 +1,241 @@
+<div id="app"></div>
+<style>
+  :root {
+    --bg: #f6f8fa; --surface: #ffffff; --ink: #1f2328; --muted: #636c76;
+    --faint: #8c959f; --border: #d0d7de; --border-subtle: #eaeef2;
+    --accent: #0969da; --good: #1a7f37; --good-soft: #dafbe1;
+    --warn: #9a6700; --warn-soft: #fff8c5; --crit: #cf222e; --crit-soft: #ffebe9;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --radius: 12px; --shadow: 0 1px 2px rgba(31,35,40,.04), 0 4px 14px rgba(31,35,40,.05);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  #app {
+    font-family: var(--font-sans); color: var(--ink); background: var(--bg);
+    background-image: radial-gradient(1000px 440px at 88% -12%, rgba(9,105,218,.06), transparent 70%);
+    min-height: 100vh; padding: 40px 20px 72px; line-height: 1.5;
+  }
+  .shell { max-width: 1100px; margin: 0 auto; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600; margin: 0 0 10px; }
+  h1 { font-family: var(--font-mono); font-size: clamp(22px, 4vw, 32px); font-weight: 600;
+    margin: 0; letter-spacing: -.01em; word-break: break-word; }
+  h1 .at { color: var(--muted); font-weight: 500; }
+  .meta { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  .signals { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .signal { display: inline-flex; align-items: baseline; gap: 6px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px; padding: 6px 13px; font-size: 12.5px; color: var(--muted); }
+  .signal b { font-family: var(--font-mono); font-size: 13px; color: var(--ink); font-weight: 600; }
+  .signal.is-warn { background: var(--warn-soft); border-color: #eedfa0; color: var(--warn); }
+  .signal.is-warn b { color: var(--warn); }
+  .signal.is-good { background: var(--good-soft); border-color: #b4e6c1; color: var(--good); }
+  .signal.is-good b { color: var(--good); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    gap: 12px; margin: 28px 0 36px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 15px 15px 13px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--bar, var(--border)); }
+  .kpi .n { font-family: var(--font-mono); font-size: 26px; font-weight: 600; line-height: 1.1;
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .kpi .l { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 6px; font-weight: 600; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px 22px 22px; box-shadow: var(--shadow); margin-bottom: 20px; }
+  .panel h2 { font-size: 13px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink);
+    margin: 0 0 2px; font-weight: 700; }
+  .panel .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 16px; }
+  .panel .hint b { font-family: var(--font-mono); color: var(--ink); font-weight: 600; }
+
+  .wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 760px; }
+  thead th { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--faint);
+    font-weight: 600; text-align: right; padding: 0 10px 11px 0; white-space: nowrap; }
+  thead th:first-child { text-align: left; padding-left: 0; }
+  tbody td { padding: 10px 10px 10px 0; border-top: 1px solid var(--border-subtle);
+    font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums;
+    text-align: right; color: var(--ink); white-space: nowrap; }
+  tbody td:first-child { text-align: left; padding-left: 0; width: 1%; }
+  tbody tr.inactive td { color: var(--faint); }
+  .repo-cell { display: flex; align-items: center; gap: 8px; }
+  .repo-cell a { font-family: var(--font-mono); font-size: 12.5px; color: var(--accent);
+    text-decoration: none; font-weight: 600; }
+  .repo-cell a:hover { text-decoration: underline; }
+  tr.inactive .repo-cell a { color: var(--muted); font-weight: 500; }
+  .openedcell { display: flex; align-items: center; justify-content: flex-end; gap: 9px; }
+  .openedcell .track { width: 64px; height: 6px; background: var(--border-subtle); border-radius: 4px; overflow: hidden; }
+  .openedcell .fill { height: 100%; width: 0; border-radius: 4px; background: var(--accent);
+    transition: width .7s cubic-bezier(.2,.7,.2,1); }
+  .v-good { color: var(--good); } .v-warn { color: var(--warn); } .v-crit { color: var(--crit); } .v-faint { color: var(--faint); }
+
+  .tag { display: inline-block; font-family: var(--font-mono); font-size: 9.5px; font-weight: 600;
+    letter-spacing: .04em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px;
+    background: var(--border-subtle); color: var(--muted); }
+  .tag.fork { background: #eef2ff; color: #4338ca; }
+  .tag.arch { background: var(--warn-soft); color: var(--warn); }
+
+  .rows { display: flex; flex-direction: column; gap: 11px; }
+  .row { display: grid; grid-template-columns: 168px 1fr auto; align-items: center; gap: 12px; }
+  .row .rl { font-family: var(--font-mono); font-size: 12px; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .rtrack { height: 9px; background: var(--border-subtle); border-radius: 5px; overflow: hidden; }
+  .row .rfill { height: 100%; width: 0; border-radius: 5px; transition: width .7s cubic-bezier(.2,.7,.2,1); }
+  .row .rv { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; color: var(--ink);
+    font-variant-numeric: tabular-nums; text-align: right; min-width: 3ch; }
+  .pill { display: inline-block; font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 5px;
+    margin-left: 7px; background: var(--border-subtle); color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); margin-top: 14px; }
+  .note.crit { color: var(--crit); }
+  .foot { text-align: center; color: var(--faint); font-size: 11.5px; margin-top: 28px; font-family: var(--font-mono); }
+  @media (prefers-reduced-motion: reduce) { .fill, .rfill, .openedcell .fill { transition: none; } }
+</style>
+<script>
+  const DATA = {{DATA_JSON}};
+  const C = { accent: "#0969da", good: "#1a7f37", warn: "#9a6700", crit: "#cf222e", muted: "#8c959f" };
+  const fmt = n => (typeof n === "number" ? n.toLocaleString() : (n == null ? "—" : n));
+  const el = (t, p = {}, ...kids) => {
+    const n = Object.assign(document.createElement(t), p);
+    for (const k of kids) if (k != null) n.append(k);
+    return n;
+  };
+  const fills = [];
+  const fill = (cls, pct, color) => {
+    const f = el("div", { className: cls });
+    f.style.background = color;
+    f.dataset.w = Math.max(pct, pct > 0 ? 4 : 0) + "%";
+    fills.push(f); return f;
+  };
+  const isBot = l => /^app\//.test(l) || /\[bot\]|-bot$|^dependabot|^renovate/i.test(l);
+
+  document.title = "Portfolio Audit — " + DATA.owner;
+  const app = el("div", { className: "shell" });
+  const T = DATA.totals;
+
+  app.append(el("p", { className: "eyebrow", textContent: "Portfolio Audit" }));
+  const h1 = el("h1");
+  h1.append(el("span", { className: "at", textContent: "@" }));
+  h1.append(document.createTextNode(DATA.owner));
+  app.append(h1);
+  app.append(el("p", { className: "meta",
+    textContent: `${T.repos} repos · window since ${DATA.window.since} · generated ${DATA.generated_at}` }));
+
+  const sig = el("div", { className: "signals" });
+  const addSignal = (label, value, cls) => {
+    const s = el("div", { className: "signal" + (cls ? " " + cls : "") });
+    s.append(el("b", { textContent: value })); s.append(document.createTextNode(label));
+    sig.append(s);
+  };
+  addSignal("active repos", `${T.active_repos}/${T.repos}`, T.active_repos === 0 ? "is-warn" : "");
+  if (T.opened) {
+    const rate = Math.round((T.merged / T.opened) * 100);
+    addSignal("merge rate", rate + "%", rate >= 60 ? "is-good" : rate < 35 ? "is-warn" : "");
+  }
+  const botPRs = (DATA.contributors || []).filter(c => isBot(c.login)).reduce((a, c) => a + c.count, 0);
+  if (T.opened && botPRs > 0) {
+    const share = Math.round((botPRs / T.opened) * 100);
+    addSignal("from bots", share + "%", share >= 50 ? "is-warn" : "");
+  }
+  addSignal("stale open PRs", String(T.stale), T.stale > 0 ? "is-warn" : "is-good");
+  app.append(sig);
+
+  const kpis = el("div", { className: "kpis" });
+  const card = (label, value, color) => {
+    const c = el("div", { className: "kpi" });
+    c.style.setProperty("--bar", color);
+    c.append(el("div", { className: "n", textContent: fmt(value) }));
+    c.append(el("div", { className: "l", textContent: label }));
+    return c;
+  };
+  kpis.append(card("Repos", T.repos, C.muted));
+  kpis.append(card("Active", T.active_repos, C.accent));
+  kpis.append(card("Opened", T.opened, C.accent));
+  kpis.append(card("Merged", T.merged, C.good));
+  kpis.append(card("Closed", T.closed, C.muted));
+  kpis.append(card("Contributors", T.contributors, C.accent));
+  kpis.append(card("Open backlog", T.open_backlog, T.open_backlog > 0 ? C.warn : C.muted));
+  kpis.append(card("Stale 30d+", T.stale, T.stale > 0 ? C.warn : C.muted));
+  app.append(kpis);
+
+  const panel = el("div", { className: "panel" });
+  panel.append(el("h2", { textContent: "Repositories" }));
+  panel.append(el("p", { className: "hint",
+    innerHTML: `Ranked by PRs opened in the window. <b>${T.active_repos}</b> of <b>${T.repos}</b> had PR activity; the rest are shown muted. Forks and archived repos are tagged.` }));
+  const maxOpened = Math.max(1, ...DATA.repos.map(r => r.opened));
+  const wrap = el("div", { className: "wrap" });
+  const tbl = el("table");
+  const thead = el("thead"), htr = el("tr");
+  ["Repository", "Opened", "Merged", "Closed", "Contrib", "Open", "Stale", "Median", "Stars"]
+    .forEach(h => htr.append(el("th", { textContent: h })));
+  thead.append(htr); tbl.append(thead);
+  const tb = el("tbody");
+  DATA.repos.forEach(r => {
+    const tr = el("tr", { className: r.opened > 0 ? "" : "inactive" });
+    const c0 = el("td");
+    const rc = el("div", { className: "repo-cell" });
+    rc.append(el("a", { href: "https://github.com/" + r.repo, target: "_blank",
+      rel: "noopener", textContent: r.repo.split("/")[1] || r.repo }));
+    if (r.isFork) rc.append(el("span", { className: "tag fork", textContent: "fork" }));
+    if (r.isArchived) rc.append(el("span", { className: "tag arch", textContent: "archived" }));
+    c0.append(rc); tr.append(c0);
+    const cO = el("td");
+    const oc = el("div", { className: "openedcell" });
+    const track = el("div", { className: "track" });
+    track.append(fill("fill", (r.opened / maxOpened) * 100, C.accent));
+    oc.append(track);
+    oc.append(el("span", { textContent: r.opened }));
+    cO.append(oc); tr.append(cO);
+    tr.append(el("td", { className: r.merged > 0 ? "v-good" : "", textContent: r.merged }));
+    tr.append(el("td", { textContent: r.closed }));
+    tr.append(el("td", { textContent: r.contributors }));
+    tr.append(el("td", { textContent: r.open_backlog }));
+    tr.append(el("td", { className: r.stale > 0 ? "v-warn" : "v-faint", textContent: r.stale }));
+    tr.append(el("td", { className: r.median_lines > 500 ? "v-warn" : "", textContent: r.median_lines }));
+    tr.append(el("td", { textContent: fmt(r.stars) }));
+    tb.append(tr);
+  });
+  tbl.append(tb); wrap.append(tbl); panel.append(wrap);
+  app.append(panel);
+
+  const contribs = DATA.contributors || [];
+  if (contribs.length) {
+    const cp = el("div", { className: "panel" });
+    cp.append(el("h2", { textContent: "Contributors (org-wide)" }));
+    const humans = contribs.filter(c => !isBot(c.login)).length;
+    const bots = contribs.length - humans;
+    cp.append(el("p", { className: "hint",
+      innerHTML: `<b>${humans}</b> human${humans === 1 ? "" : "s"}` +
+        (bots ? ` · <b>${bots}</b> bot${bots === 1 ? "" : "s"} (${botPRs} PRs) shown muted` : "") +
+        ". Summed across all repos." }));
+    const top = contribs.slice(0, 20);
+    const max = Math.max(1, ...top.map(c => c.count));
+    const rows = el("div", { className: "rows" });
+    top.forEach(c => {
+      const row = el("div", { className: "row" });
+      const lbl = el("div", { className: "rl", title: c.login });
+      lbl.append(document.createTextNode(c.login.replace(/^app\//, "")));
+      if (isBot(c.login)) lbl.append(el("span", { className: "pill", textContent: "bot" }));
+      row.append(lbl);
+      const track = el("div", { className: "rtrack" });
+      track.append(fill("rfill", (c.count / max) * 100, isBot(c.login) ? C.muted : C.accent));
+      row.append(track);
+      row.append(el("div", { className: "rv", textContent: fmt(c.count) }));
+      rows.append(row);
+    });
+    cp.append(rows);
+    if (contribs.length > 20)
+      cp.append(el("p", { className: "note", textContent: `+ ${contribs.length - 20} more contributors not shown.` }));
+    app.append(cp);
+  }
+
+  if (DATA.skipped && DATA.skipped.length) {
+    app.append(el("p", { className: "note crit",
+      textContent: `${DATA.skipped.length} repo(s) could not be fetched and are excluded: ` +
+        DATA.skipped.map(s => s.repo).join(", ") }));
+  }
+
+  app.append(el("p", { className: "foot", textContent: "@" + DATA.owner + " · " + DATA.generated_at }));
+  document.getElementById("app").append(app);
+  requestAnimationFrame(() => requestAnimationFrame(() => fills.forEach(f => { f.style.width = f.dataset.w; })));
+</script>
