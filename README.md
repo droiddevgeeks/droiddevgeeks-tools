@@ -25,19 +25,27 @@ This repo is both the plugin and its own marketplace. In Claude Code:
     /plugin marketplace add droiddevgeeks/droiddevgeeks-tools
     /plugin install droiddevgeeks-tools@droiddevgeeks
 
-Then invoke it in plain language (e.g. "audit the cli/cli repo"). The skill is
-namespaced as `/droiddevgeeks-tools:github-audit`. To update later, bump the
-version in `plugin.json`, push, and run `/plugin update droiddevgeeks-tools`.
+Then try it — the quickest start is to audit your own work:
+
+    show my contributions
+
+The skill is namespaced as `/droiddevgeeks-tools:github-audit`. To update later,
+bump the version in `plugin.json`, push, and run `/plugin update droiddevgeeks-tools`.
 
 ## Usage
 
-Ask Claude Code in plain language — it picks the mode and extracts the target from
-`owner/name`, a bare `owner`, a `username`, or any GitHub URL:
+Ask Claude Code in plain language — it picks the mode and the target. With no name,
+it uses your current authenticated `gh` user, so the fastest first run is:
+
+    show my contributions          # your PRs across every repo (current gh user)
+    audit me                       # same thing
+
+Or name a target — `owner/name`, a bare `owner`, a `username`, or any GitHub URL:
 
     audit the cli/cli repo
     audit https://github.com/vercel/next.js
     show me cashfree-tech's repo portfolio
-    what has kishan-cashfree contributed across all repos?
+    what has kishan-cashfree worked on?
 
 ## Run the scripts directly
 
@@ -52,6 +60,10 @@ From `skills/github-audit/`:
 
     # One person's PRs across all repos and orgs
     python3 scripts/audit_author.py kishan-cashfree
+    python3 scripts/audit_author.py            # no name → current gh user ("audit me")
+
+`audit_author.py` and `audit_user.py` both default to the current authenticated
+`gh` user (`gh api user`) when you omit the name.
 
 Common flags: `--weeks N` (4), `--months N` (3), `--limit N` (PRs fetched — 500 for
 repo/portfolio, 1000 for author). Portfolio adds `--repo-limit N` (300). Each script

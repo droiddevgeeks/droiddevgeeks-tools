@@ -340,6 +340,61 @@ class BuildAuthorReportTests(unittest.TestCase):
         self.assertEqual(r["repos"], [])
 
 
+class SelfDefaultTests(unittest.TestCase):
+    """`audit me` — no name given resolves to the current gh user."""
+
+    def test_author_defaults_to_current_user(self):
+        import io, json as _json
+        from contextlib import redirect_stdout
+        seen = {}
+
+        def fake_search(author, limit=1000):
+            seen["author"] = author
+            return []
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            code = audit.main_author([], search=fake_search, now=NOW,
+                                     whoami=lambda: "kishan-cashfree")
+        self.assertEqual(code, 0)
+        self.assertEqual(seen["author"], "kishan-cashfree")
+        self.assertEqual(_json.loads(buf.getvalue())["author"], "kishan-cashfree")
+
+    def test_author_explicit_name_overrides_whoami(self):
+        import io
+        from contextlib import redirect_stdout
+        seen = {}
+
+        def fake_search(author, limit=1000):
+            seen["author"] = author
+            return []
+        with redirect_stdout(io.StringIO()):
+            audit.main_author(["someone-else"], search=fake_search, now=NOW,
+                              whoami=lambda: "should-not-be-used")
+        self.assertEqual(seen["author"], "someone-else")
+
+    def test_portfolio_defaults_to_current_user(self):
+        import io
+        from contextlib import redirect_stdout, redirect_stderr
+        seen = {}
+
+        def fake_list(owner, limit):
+            seen["owner"] = owner
+            return []
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            code = audit.main_user([], list_fn=fake_list, now=NOW,
+                                   whoami=lambda: "kishan-cashfree")
+        self.assertEqual(code, 0)
+        self.assertEqual(seen["owner"], "kishan-cashfree")
+
+    def test_current_user_parses_gh_output(self):
+        login = audit.current_user(run=lambda cmd: "kishan-cashfree\n")
+        self.assertEqual(login, "kishan-cashfree")
+
+    def test_current_user_empty_raises(self):
+        with self.assertRaises(RuntimeError):
+            audit.current_user(run=lambda cmd: "  \n")
+
+
 class ReportIntegrationTests(unittest.TestCase):
     def test_report_includes_backlog_and_size(self):
         prs = [

@@ -77,6 +77,15 @@ def _gh(cmd, retries=3, sleep=None):
     raise RuntimeError(f"gh failed: {last}")
 
 
+def current_user(run=None):
+    """The login of the authenticated gh user (for 'audit me' / no-arg runs)."""
+    run = run or _gh
+    login = (run(["gh", "api", "user", "--jq", ".login"]) or "").strip()
+    if not login:
+        raise RuntimeError("could not determine the current GitHub user (is gh authenticated?)")
+    return login
+
+
 def classify(pr):
     branch = (pr.get("headRefName") or "").lower()
     title = pr.get("title") or ""
@@ -485,10 +494,11 @@ def main(argv=None, fetch=fetch_prs, now=None):
     return 0
 
 
-def main_user(argv=None, list_fn=list_repos, fetch=fetch_prs, now=None):
+def main_user(argv=None, list_fn=list_repos, fetch=fetch_prs, now=None, whoami=current_user):
     parser = argparse.ArgumentParser(
         description="Audit every repo of a GitHub user/org into one portfolio.")
-    parser.add_argument("owner", help="user/org name or URL")
+    parser.add_argument("owner", nargs="?",
+                        help="user/org name or URL; omit to audit the current gh user")
     parser.add_argument("--weeks", type=int, default=4)
     parser.add_argument("--months", type=int, default=3)
     parser.add_argument("--limit", type=int, default=500, help="PRs fetched per repo")
@@ -497,7 +507,7 @@ def main_user(argv=None, list_fn=list_repos, fetch=fetch_prs, now=None):
     if now is None:
         now = datetime.now(timezone.utc)
     try:
-        owner = normalize_owner(args.owner)
+        owner = normalize_owner(args.owner) if args.owner else whoami()
         repos = list_fn(owner, args.repo_limit)
     except (ValueError, RuntimeError) as e:
         print(str(e), file=sys.stderr)
@@ -528,10 +538,11 @@ def main_user(argv=None, list_fn=list_repos, fetch=fetch_prs, now=None):
     return 0
 
 
-def main_author(argv=None, search=search_author_prs, now=None):
+def main_author(argv=None, search=search_author_prs, now=None, whoami=current_user):
     parser = argparse.ArgumentParser(
         description="Audit every PR a GitHub user authored, across all repos.")
-    parser.add_argument("author", help="username or URL")
+    parser.add_argument("author", nargs="?",
+                        help="username or URL; omit to audit the current gh user")
     parser.add_argument("--weeks", type=int, default=4)
     parser.add_argument("--months", type=int, default=3)
     parser.add_argument("--limit", type=int, default=1000, help="max PRs fetched")
@@ -539,7 +550,7 @@ def main_author(argv=None, search=search_author_prs, now=None):
     if now is None:
         now = datetime.now(timezone.utc)
     try:
-        author = normalize_owner(args.author)
+        author = normalize_owner(args.author) if args.author else whoami()
         prs = search(author, limit=args.limit)
     except (ValueError, RuntimeError) as e:
         print(str(e), file=sys.stderr)
