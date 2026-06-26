@@ -6,9 +6,9 @@
   },
   "plugins": [
     {
-      "name": "github-repo-audit",
+      "name": "droiddevgeeks-tools",
       "source": "./",
-      "description": "Audit a single GitHub repository's pull-request activity and render a self-contained HTML dashboard."
+      "description": "droiddevgeeks's Claude Code tools. Includes github-audit: audit a GitHub repo's pull-request activity and render a self-contained HTML dashboard."
     }
   ]
 }

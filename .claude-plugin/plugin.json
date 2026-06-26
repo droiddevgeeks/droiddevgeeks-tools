@@ -1,6 +1,6 @@
 {
-  "name": "github-repo-audit",
-  "description": "Audit a single GitHub repository's pull-request activity and render a self-contained HTML dashboard.",
+  "name": "droiddevgeeks-tools",
+  "description": "droiddevgeeks's Claude Code tools. Includes github-audit: audit a GitHub repo's pull-request activity and render a self-contained HTML dashboard.",
   "version": "1.0.0",
   "author": {
     "name": "droiddevgeeks"

@@ -1,5 +1,5 @@
 ---
-name: github-repo-audit
+name: github-audit
 description: Audit a single GitHub repository's pull-request activity. Use when the user asks to audit a repo, wants PR stats (opened/closed/merged) weekly or monthly, asks who is contributing or how many developers are active, or wants hotfix or revert PR counts for an owner/name repo. Produces an HTML dashboard.
 ---
 
