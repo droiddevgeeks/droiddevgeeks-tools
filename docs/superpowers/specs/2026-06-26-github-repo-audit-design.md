@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-26
 **Status:** Approved (design phase)
-**Author:** kishan-cashfree
+**Author:** droiddevgeeks
 
 ## Purpose
 
@@ -18,7 +18,7 @@ into.
 ## Scope (v1)
 
 - **Unit of analysis:** one repo per run. User passes the repo as
-  `owner/name` (e.g. `cashfree/payments-sdk`).
+  `owner/name` (e.g. `droiddevgeeks/droiddevgeeks.github.io`).
 - **Time window:** both weekly and monthly rollups in every run.
   - Weekly: the most recent 4 ISO weeks (Mon–Sun).
   - Monthly: the most recent 3 calendar months.
