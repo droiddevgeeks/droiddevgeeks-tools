@@ -1,0 +1,14 @@
+{
+  "name": "droiddevgeeks",
+  "description": "droiddevgeeks's Claude Code plugins.",
+  "owner": {
+    "name": "droiddevgeeks"
+  },
+  "plugins": [
+    {
+      "name": "github-repo-audit",
+      "source": "./",
+      "description": "Audit a single GitHub repository's pull-request activity and render a self-contained HTML dashboard."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "github-repo-audit",
+  "description": "Audit a single GitHub repository's pull-request activity and render a self-contained HTML dashboard.",
+  "version": "1.0.0",
+  "author": {
+    "name": "droiddevgeeks"
+  },
+  "homepage": "https://github.com/droiddevgeeks/github-repo-audit",
+  "repository": "https://github.com/droiddevgeeks/github-repo-audit"
+}
