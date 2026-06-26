@@ -5,7 +5,12 @@ HTML dashboard.
 
 ## Install
 
-Copy this folder into your Claude skills directory:
+Clone the repo straight into your Claude skills directory:
+
+    git clone https://github.com/droiddevgeeks/github-repo-audit \
+      ~/.claude/skills/github-repo-audit
+
+Already cloned elsewhere? Copy it in from the parent of the clone:
 
     cp -r github-repo-audit ~/.claude/skills/github-repo-audit
 
