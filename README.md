@@ -1,13 +1,14 @@
-# github-repo-audit
+# droiddevgeeks-tools
 
-A Claude Code skill that audits one GitHub repo's PR activity and renders a
-self-contained HTML dashboard. Packaged as a Claude Code plugin.
+A Claude Code plugin of droiddevgeeks's tools. Currently ships one skill,
+**github-audit**, which audits one GitHub repo's PR activity and renders a
+self-contained HTML dashboard.
 
 ## Install (plugin — recommended)
 
 This repo is both the plugin and its own marketplace. In Claude Code:
 
-    /plugin marketplace add droiddevgeeks/github-repo-audit
+    /plugin marketplace add droiddevgeeks/droiddevgeeks-tools
     /plugin install droiddevgeeks-tools@droiddevgeeks
 
 Then invoke it: "audit the cli/cli repo". The skill is namespaced as
@@ -20,8 +21,8 @@ To update later, bump the version and the plugin manager pulls the new release.
 If you'd rather not use the plugin system, copy just the skill folder into your
 personal skills directory:
 
-    git clone https://github.com/droiddevgeeks/github-repo-audit /tmp/github-repo-audit
-    cp -r /tmp/github-repo-audit/skills/github-audit ~/.claude/skills/github-audit
+    git clone https://github.com/droiddevgeeks/droiddevgeeks-tools /tmp/droiddevgeeks-tools
+    cp -r /tmp/droiddevgeeks-tools/skills/github-audit ~/.claude/skills/github-audit
 
 Invoked this way the skill is unnamespaced: just "audit the cli/cli repo".
 
