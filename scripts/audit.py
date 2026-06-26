@@ -1,6 +1,10 @@
 """Audit one GitHub repo's PR activity. Stdlib only."""
 
-from datetime import datetime, timedelta, date
+import sys
+import json
+import argparse
+import subprocess
+from datetime import datetime, timedelta, date, timezone
 
 HOTFIX_PREFIX = "hotfix/"
 REVERT_TITLE_PREFIX = 'Revert "'
@@ -114,3 +118,42 @@ def build_report(prs, repo, now, weeks=4, months=3):
         "contributors": contribs,
         "totals": totals,
     }
+
+
+GH_FIELDS = "number,title,author,createdAt,closedAt,mergedAt,state,headRefName,labels"
+
+
+def fetch_prs(repo, limit=500):
+    cmd = ["gh", "pr", "list", "--repo", repo, "--state", "all",
+           "--limit", str(limit), "--json", GH_FIELDS]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"gh failed: {result.stderr.strip()}")
+    prs = json.loads(result.stdout or "[]")
+    if len(prs) >= limit:
+        print(f"warning: hit --limit {limit}; older PRs may be missing",
+              file=sys.stderr)
+    return prs
+
+
+def main(argv=None, fetch=fetch_prs, now=None):
+    parser = argparse.ArgumentParser(description="Audit a GitHub repo's PR activity.")
+    parser.add_argument("repo", help="owner/name")
+    parser.add_argument("--weeks", type=int, default=4)
+    parser.add_argument("--months", type=int, default=3)
+    parser.add_argument("--limit", type=int, default=500)
+    args = parser.parse_args(argv)
+    if now is None:
+        now = datetime.now(timezone.utc)
+    try:
+        prs = fetch(args.repo, limit=args.limit)
+    except RuntimeError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    report = build_report(prs, args.repo, now, args.weeks, args.months)
+    print(json.dumps(report, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
