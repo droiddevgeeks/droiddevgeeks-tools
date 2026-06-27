@@ -1,7 +1,7 @@
 {
   "name": "droiddevgeeks-tools",
   "description": "droiddevgeeks's Claude Code tools. Includes github-audit: audit GitHub PR activity for a repo, a user/org portfolio, or one person's contributions, rendered as a self-contained HTML dashboard.",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "author": {
     "name": "droiddevgeeks"
   },
