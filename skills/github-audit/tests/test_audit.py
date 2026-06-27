@@ -245,6 +245,57 @@ class BuildPortfolioTests(unittest.TestCase):
         self.assertEqual(p["repos"], [])
 
 
+def _report_v(repo, *, merge_hours=(), review_hours=(), no_review=0, opened=0, merged=0):
+    r = _report(repo, opened=opened, merged=merged)
+    ms, rs = sorted(merge_hours), sorted(review_hours)
+    r["velocity"] = {
+        "merge_p50": audit._percentile(ms, 0.5), "merge_p90": audit._percentile(ms, 0.9),
+        "review_p50": audit._percentile(rs, 0.5), "review_p90": audit._percentile(rs, 0.9),
+        "merged_count": len(ms), "reviewed_count": len(rs), "no_review_count": no_review,
+        "_merge_hours": list(merge_hours), "_review_hours": list(review_hours),
+    }
+    return r
+
+
+class PortfolioVelocityTests(unittest.TestCase):
+    def test_pooled_p50_is_not_median_of_medians(self):
+        # repoA merge hours: [1, 1, 1, 1, 100]  -> own p50 = 1
+        # repoB merge hours: [50, 50, 50]        -> own p50 = 50
+        # median-of-medians would be ~25.5; pooled sorted:
+        #   [1,1,1,1,50,50,50,100] -> nearest-rank p50 (rank ceil(.5*8)=4) = 1
+        entries = [
+            _entry(_report_v("o/a", merge_hours=[1, 1, 1, 1, 100], merged=5)),
+            _entry(_report_v("o/b", merge_hours=[50, 50, 50], merged=3)),
+        ]
+        p = audit.build_portfolio("o", entries, NOW, 4, 3)
+        self.assertEqual(p["totals"]["merge_p50"], 1)
+        # sanity: per-repo medians differ from the pooled value
+        a = next(r for r in p["repos"] if r["repo"] == "o/a")
+        self.assertEqual(a["merge_p50"], 1)
+
+    def test_per_repo_velocity_carried(self):
+        entries = [_entry(_report_v("o/a", merge_hours=[2, 4, 6],
+                                    review_hours=[1, 3], no_review=1, merged=3))]
+        p = audit.build_portfolio("o", entries, NOW, 4, 3)
+        a = next(r for r in p["repos"] if r["repo"] == "o/a")
+        self.assertEqual(a["merge_p50"], 4)   # nearest-rank p50 of [2,4,6]
+        self.assertEqual(a["review_p50"], 1)   # nearest-rank p50 of [1,3]
+        self.assertEqual(a["reviewed_count"], 2)
+        self.assertEqual(a["no_review_count"], 1)
+
+    def test_pooled_lists_not_leaked(self):
+        entries = [_entry(_report_v("o/a", merge_hours=[2, 4], merged=2))]
+        p = audit.build_portfolio("o", entries, NOW, 4, 3)
+        self.assertNotIn("_merge_hours", p["totals"])
+        for r in p["repos"]:
+            self.assertNotIn("_merge_hours", r)
+
+    def test_empty_velocity_safe(self):
+        # entries with no velocity block (back-compat) must not crash
+        p = audit.build_portfolio("o", [_entry(_report("o/x"))], NOW, 4, 3)
+        self.assertEqual(p["totals"]["merge_p50"], 0)
+
+
 def _spr(number, state, created, closed, repo, updated=None):
     return {
         "number": number, "state": state,
