@@ -95,6 +95,7 @@
   const DATA = {{DATA_JSON}};
   const C = { accent: "#0969da", good: "#1a7f37", warn: "#9a6700", crit: "#cf222e", muted: "#8c959f" };
   const fmt = n => (typeof n === "number" ? n.toLocaleString() : (n == null ? "—" : n));
+  const fmtDur = h => (h == null ? "—" : (h < 24 ? Math.round(h) + "h" : Math.round(h / 24) + "d"));
   const el = (t, p = {}, ...kids) => {
     const n = Object.assign(document.createElement(t), p);
     for (const k of kids) if (k != null) n.append(k);
@@ -138,6 +139,8 @@
     addSignal("from bots", share + "%", share >= 50 ? "is-warn" : "");
   }
   addSignal("stale open PRs", String(T.stale), T.stale > 0 ? "is-warn" : "is-good");
+  if (T.merge_p50) addSignal("merge p50", fmtDur(T.merge_p50));
+  if (T.review_p50) addSignal("review p50", fmtDur(T.review_p50));
   app.append(sig);
 
   const kpis = el("div", { className: "kpis" });
@@ -166,7 +169,7 @@
   const wrap = el("div", { className: "wrap" });
   const tbl = el("table");
   const thead = el("thead"), htr = el("tr");
-  ["Repository", "Opened", "Merged", "Closed", "Contrib", "Open", "Stale", "Median", "Stars"]
+  ["Repository", "Opened", "Merged", "Closed", "Contrib", "Open", "Stale", "Median", "Merge p50", "Review p50", "Stars"]
     .forEach(h => htr.append(el("th", { textContent: h })));
   thead.append(htr); tbl.append(thead);
   const tb = el("tbody");
@@ -192,6 +195,12 @@
     tr.append(el("td", { textContent: r.open_backlog }));
     tr.append(el("td", { className: r.stale > 0 ? "v-warn" : "v-faint", textContent: r.stale }));
     tr.append(el("td", { className: r.median_lines > 500 ? "v-warn" : "", textContent: r.median_lines }));
+    const mc = el("td", { textContent: r.merged_count ? fmtDur(r.merge_p50) : "—" });
+    if (r.merge_p90) mc.title = "p90 " + fmtDur(r.merge_p90);
+    tr.append(mc);
+    const rvc = el("td", { textContent: r.reviewed_count ? fmtDur(r.review_p50) : "—" });
+    if (r.reviewed_count && r.review_p90) rvc.title = "p90 " + fmtDur(r.review_p90);
+    tr.append(rvc);
     tr.append(el("td", { textContent: fmt(r.stars) }));
     tb.append(tr);
   });
