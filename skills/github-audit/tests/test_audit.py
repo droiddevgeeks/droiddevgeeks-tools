@@ -464,6 +464,51 @@ class FirstReviewHoursTests(unittest.TestCase):
         self.assertIsNone(audit._first_review_hours(pr))
 
 
+class VelocityTests(unittest.TestCase):
+    def _fixture(self):
+        # 3 merged PRs: merge times 2h, 10h, 30h; reviews: 1h, none(bot only), 5h
+        return [
+            _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-01T02:00:00Z",
+                 author="alice", reviews=[_rev("bob", "2026-06-01T01:00:00Z")]),
+            _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-01T10:00:00Z",
+                 author="alice", reviews=[_rev("copilot", "2026-06-01T00:05:00Z")]),
+            _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T06:00:00Z",
+                 author="alice", reviews=[_rev("carol", "2026-06-01T05:00:00Z")]),
+            _rpr(created="2026-06-01T00:00:00Z", merged=None, author="alice"),  # open, ignored
+        ]
+
+    def test_counts(self):
+        v = audit.velocity(self._fixture())
+        self.assertEqual(v["merged_count"], 3)
+        self.assertEqual(v["reviewed_count"], 2)
+        self.assertEqual(v["no_review_count"], 1)
+        self.assertEqual(v["reviewed_count"] + v["no_review_count"], v["merged_count"])
+
+    def test_merge_percentiles(self):
+        v = audit.velocity(self._fixture())
+        # sorted merge hours: [2, 10, 30]; nearest-rank p50 -> 10, p90 -> 30
+        self.assertEqual(v["merge_p50"], 10.0)
+        self.assertEqual(v["merge_p90"], 30.0)
+
+    def test_review_percentiles(self):
+        v = audit.velocity(self._fixture())
+        # sorted review hours: [1, 5]; p50 -> 1, p90 -> 5
+        self.assertEqual(v["review_p50"], 1.0)
+        self.assertEqual(v["review_p90"], 5.0)
+
+    def test_raw_lists_present(self):
+        v = audit.velocity(self._fixture())
+        self.assertEqual(sorted(v["_merge_hours"]), [2.0, 10.0, 30.0])
+        self.assertEqual(sorted(v["_review_hours"]), [1.0, 5.0])
+
+    def test_empty_is_safe(self):
+        v = audit.velocity([])
+        self.assertEqual(v["merged_count"], 0)
+        self.assertEqual(v["merge_p50"], 0)
+        self.assertEqual(v["no_review_count"], 0)
+        self.assertEqual(v["_merge_hours"], [])
+
+
 class IsBotTests(unittest.TestCase):
     def test_bracket_bot_suffix(self):
         self.assertTrue(audit._is_bot("dependabot[bot]"))

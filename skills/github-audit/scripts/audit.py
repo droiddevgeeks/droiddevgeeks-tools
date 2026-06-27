@@ -142,6 +142,38 @@ def _first_review_hours(pr):
     return (min(times) - created).total_seconds() / 3600.0
 
 
+def velocity(prs):
+    """Aggregate merge and first-review durations over merged PRs.
+
+    Review stats are scoped to merged PRs so that
+    reviewed_count + no_review_count == merged_count.
+    """
+    merge_hours, review_hours = [], []
+    no_review = 0
+    for pr in prs:
+        mh = _merge_hours(pr)
+        if mh is None:
+            continue
+        merge_hours.append(mh)
+        rh = _first_review_hours(pr)
+        if rh is None:
+            no_review += 1
+        else:
+            review_hours.append(rh)
+    ms, rs = sorted(merge_hours), sorted(review_hours)
+    return {
+        "merge_p50": _percentile(ms, 0.5),
+        "merge_p90": _percentile(ms, 0.9),
+        "review_p50": _percentile(rs, 0.5),
+        "review_p90": _percentile(rs, 0.9),
+        "merged_count": len(merge_hours),
+        "reviewed_count": len(review_hours),
+        "no_review_count": no_review,
+        "_merge_hours": merge_hours,
+        "_review_hours": review_hours,
+    }
+
+
 def week_start(d):
     return d - timedelta(days=d.weekday())
 
