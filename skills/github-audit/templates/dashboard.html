@@ -90,6 +90,8 @@
   }
   .panel .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 16px; }
   .panel .hint b { font-family: var(--font-mono); color: var(--ink); font-weight: 600; }
+  .panel .hint.legend { font-size: 12px; line-height: 1.55; border-top: 1px solid var(--border-subtle);
+    padding-top: 12px; margin-top: 4px; }
 
   .wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
@@ -337,6 +339,14 @@
     chips.append(chip("review p90", V.reviewed_count ? fmtDur(V.review_p90) : "—",
       V.reviewed_count && V.review_p90 >= 72 ? "warn" : ""));
     panel.append(chips);
+    const legend = el("p", { className: "hint legend" });
+    legend.append(el("b", { textContent: "p50" }));
+    legend.append(document.createTextNode(" = typical — half of PRs are faster. "));
+    legend.append(el("b", { textContent: "p90" }));
+    legend.append(document.createTextNode(" = slow tail — 9 in 10 are faster. "));
+    legend.append(el("span", { style: "color:var(--faint)",
+      textContent: "“merge” = open→merge time; “review” = open→first human review." }));
+    panel.append(legend);
     panel.append(el("p", { className: "hint",
       textContent: `${V.no_review_count} of ${V.merged_count} merged with no human review.` }));
     grid.append(panel);
