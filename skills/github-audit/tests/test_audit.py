@@ -407,5 +407,25 @@ class ReportIntegrationTests(unittest.TestCase):
         self.assertEqual(report["backlog"]["open_total"], 1)
 
 
+class IsBotTests(unittest.TestCase):
+    def test_bracket_bot_suffix(self):
+        self.assertTrue(audit._is_bot("dependabot[bot]"))
+        self.assertTrue(audit._is_bot("Some-App[bot]"))
+
+    def test_known_bots(self):
+        for login in ("coderabbitai", "copilot", "dependabot", "github-actions"):
+            self.assertTrue(audit._is_bot(login), login)
+
+    def test_case_insensitive(self):
+        self.assertTrue(audit._is_bot("CodeRabbitAI"))
+
+    def test_human_is_not_bot(self):
+        self.assertFalse(audit._is_bot("kishan-cashfree"))
+
+    def test_none_and_empty_safe(self):
+        self.assertFalse(audit._is_bot(None))
+        self.assertFalse(audit._is_bot(""))
+
+
 if __name__ == "__main__":
     unittest.main()

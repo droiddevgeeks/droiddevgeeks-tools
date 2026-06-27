@@ -11,6 +11,14 @@ HOTFIX_PREFIX = "hotfix/"
 REVERT_TITLE_PREFIX = 'Revert "'
 REVERT_LABEL = "revert"
 
+KNOWN_BOTS = {"coderabbitai", "copilot", "dependabot", "github-actions"}
+
+
+def _is_bot(login):
+    """True for known review bots and any login ending in '[bot]'."""
+    l = (login or "").lower()
+    return l.endswith("[bot]") or l in KNOWN_BOTS
+
 
 def _ref_parts(s):
     """Strip scheme/host/user/.git from any GitHub reference -> path segments."""
@@ -280,7 +288,7 @@ def build_report(prs, repo, now, weeks=4, months=3):
 
 
 GH_FIELDS = ("number,title,author,createdAt,closedAt,mergedAt,updatedAt,state,"
-             "headRefName,labels,additions,deletions,changedFiles")
+             "headRefName,labels,additions,deletions,changedFiles,reviews")
 
 
 def fetch_prs(repo, limit=500):
