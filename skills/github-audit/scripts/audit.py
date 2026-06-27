@@ -11,6 +11,14 @@ HOTFIX_PREFIX = "hotfix/"
 REVERT_TITLE_PREFIX = 'Revert "'
 REVERT_LABEL = "revert"
 
+KNOWN_BOTS = {"coderabbitai", "copilot", "dependabot", "github-actions"}
+
+
+def _is_bot(login):
+    """True for known review bots and any login ending in '[bot]'."""
+    l = (login or "").lower()
+    return l.endswith("[bot]") or l in KNOWN_BOTS
+
 
 def _ref_parts(s):
     """Strip scheme/host/user/.git from any GitHub reference -> path segments."""
@@ -104,6 +112,66 @@ def parse_dt(s):
     if not s:
         return None
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
+
+
+def _merge_hours(pr):
+    """Calendar hours from PR creation to merge; None if never merged."""
+    created = parse_dt(pr.get("createdAt"))
+    merged = parse_dt(pr.get("mergedAt"))
+    if not (created and merged):
+        return None
+    return (merged - created).total_seconds() / 3600.0
+
+
+def _first_review_hours(pr):
+    """Calendar hours to the earliest non-author, non-bot review; None if none."""
+    created = parse_dt(pr.get("createdAt"))
+    if not created:
+        return None
+    author = (pr.get("author") or {}).get("login")
+    times = []
+    for r in (pr.get("reviews") or []):
+        login = (r.get("author") or {}).get("login")
+        if not login or _is_bot(login) or login == author:
+            continue
+        t = parse_dt(r.get("submittedAt"))
+        if t:
+            times.append(t)
+    if not times:
+        return None
+    return (min(times) - created).total_seconds() / 3600.0
+
+
+def velocity(prs):
+    """Aggregate merge and first-review durations over merged PRs.
+
+    Review stats are scoped to merged PRs so that
+    reviewed_count + no_review_count == merged_count.
+    """
+    merge_hours, review_hours = [], []
+    no_review = 0
+    for pr in prs:
+        mh = _merge_hours(pr)
+        if mh is None:
+            continue
+        merge_hours.append(mh)
+        rh = _first_review_hours(pr)
+        if rh is None:
+            no_review += 1
+        else:
+            review_hours.append(rh)
+    ms, rs = sorted(merge_hours), sorted(review_hours)
+    return {
+        "merge_p50": _percentile(ms, 0.5),
+        "merge_p90": _percentile(ms, 0.9),
+        "review_p50": _percentile(rs, 0.5),
+        "review_p90": _percentile(rs, 0.9),
+        "merged_count": len(merge_hours),
+        "reviewed_count": len(review_hours),
+        "no_review_count": no_review,
+        "_merge_hours": merge_hours,
+        "_review_hours": review_hours,
+    }
 
 
 def week_start(d):
@@ -258,6 +326,7 @@ def build_report(prs, repo, now, weeks=4, months=3):
     contribs = contributors(in_window)
     backlog_stats = backlog(prs, now)
     size_stats = size_distribution(in_window)
+    velocity_stats = velocity(in_window)
     totals = {
         "opened": len(in_window),
         "closed": sum(1 for pr in in_window if pr.get("closedAt")),
@@ -275,12 +344,13 @@ def build_report(prs, repo, now, weeks=4, months=3):
         "contributors": contribs,
         "backlog": backlog_stats,
         "size": size_stats,
+        "velocity": velocity_stats,
         "totals": totals,
     }
 
 
 GH_FIELDS = ("number,title,author,createdAt,closedAt,mergedAt,updatedAt,state,"
-             "headRefName,labels,additions,deletions,changedFiles")
+             "headRefName,labels,additions,deletions,changedFiles,reviews")
 
 
 def fetch_prs(repo, limit=500):
@@ -314,11 +384,15 @@ def build_portfolio(owner, entries, now, weeks=4, months=3):
     org_contrib = {}
     agg = {"opened": 0, "merged": 0, "closed": 0, "hotfix": 0, "revert": 0,
            "open_backlog": 0, "stale": 0}
+    pooled_merge, pooled_review = [], []
     for e in entries:
         rep, meta = e["report"], e["meta"]
         T = rep.get("totals", {})
         B = rep.get("backlog") or {}
         S = rep.get("size") or {}
+        V = rep.get("velocity") or {}
+        pooled_merge.extend(V.get("_merge_hours", []))
+        pooled_review.extend(V.get("_review_hours", []))
         for c in rep.get("contributors", []):
             org_contrib[c["login"]] = org_contrib.get(c["login"], 0) + c["count"]
         for k in ("opened", "merged", "closed", "hotfix", "revert"):
@@ -343,15 +417,27 @@ def build_portfolio(owner, entries, now, weeks=4, months=3):
             "oldest_days": B.get("oldest_days"),
             "median_lines": S.get("median_lines", 0),
             "p90_lines": S.get("p90_lines", 0),
+            "merge_p50": V.get("merge_p50", 0),
+            "merge_p90": V.get("merge_p90", 0),
+            "review_p50": V.get("review_p50", 0),
+            "review_p90": V.get("review_p90", 0),
+            "merged_count": V.get("merged_count", 0),
+            "reviewed_count": V.get("reviewed_count", 0),
+            "no_review_count": V.get("no_review_count", 0),
         })
     repos.sort(key=lambda x: (-x["opened"], -x["merged"], -x["stars"], x["repo"]))
     org_top = sorted(
         [{"login": k, "count": v} for k, v in org_contrib.items()],
         key=lambda x: (-x["count"], x["login"]))
+    pm, pr_ = sorted(pooled_merge), sorted(pooled_review)
     totals = {
         "repos": len(repos),
         "active_repos": sum(1 for r in repos if r["opened"] > 0),
         "contributors": len(org_contrib),
+        "merge_p50": _percentile(pm, 0.5),
+        "merge_p90": _percentile(pm, 0.9),
+        "review_p50": _percentile(pr_, 0.5),
+        "review_p90": _percentile(pr_, 0.9),
         **agg,
     }
     return {

@@ -245,6 +245,57 @@ class BuildPortfolioTests(unittest.TestCase):
         self.assertEqual(p["repos"], [])
 
 
+def _report_v(repo, *, merge_hours=(), review_hours=(), no_review=0, opened=0, merged=0):
+    r = _report(repo, opened=opened, merged=merged)
+    ms, rs = sorted(merge_hours), sorted(review_hours)
+    r["velocity"] = {
+        "merge_p50": audit._percentile(ms, 0.5), "merge_p90": audit._percentile(ms, 0.9),
+        "review_p50": audit._percentile(rs, 0.5), "review_p90": audit._percentile(rs, 0.9),
+        "merged_count": len(ms), "reviewed_count": len(rs), "no_review_count": no_review,
+        "_merge_hours": list(merge_hours), "_review_hours": list(review_hours),
+    }
+    return r
+
+
+class PortfolioVelocityTests(unittest.TestCase):
+    def test_pooled_p50_is_not_median_of_medians(self):
+        # repoA merge hours: [1, 1, 1, 1, 100]  -> own p50 = 1
+        # repoB merge hours: [50, 50, 50]        -> own p50 = 50
+        # median-of-medians would be ~25.5; pooled sorted:
+        #   [1,1,1,1,50,50,50,100] -> nearest-rank p50 (rank ceil(.5*8)=4) = 1
+        entries = [
+            _entry(_report_v("o/a", merge_hours=[1, 1, 1, 1, 100], merged=5)),
+            _entry(_report_v("o/b", merge_hours=[50, 50, 50], merged=3)),
+        ]
+        p = audit.build_portfolio("o", entries, NOW, 4, 3)
+        self.assertEqual(p["totals"]["merge_p50"], 1)
+        # sanity: per-repo medians differ from the pooled value
+        a = next(r for r in p["repos"] if r["repo"] == "o/a")
+        self.assertEqual(a["merge_p50"], 1)
+
+    def test_per_repo_velocity_carried(self):
+        entries = [_entry(_report_v("o/a", merge_hours=[2, 4, 6],
+                                    review_hours=[1, 3], no_review=1, merged=3))]
+        p = audit.build_portfolio("o", entries, NOW, 4, 3)
+        a = next(r for r in p["repos"] if r["repo"] == "o/a")
+        self.assertEqual(a["merge_p50"], 4)   # nearest-rank p50 of [2,4,6]
+        self.assertEqual(a["review_p50"], 1)   # nearest-rank p50 of [1,3]
+        self.assertEqual(a["reviewed_count"], 2)
+        self.assertEqual(a["no_review_count"], 1)
+
+    def test_pooled_lists_not_leaked(self):
+        entries = [_entry(_report_v("o/a", merge_hours=[2, 4], merged=2))]
+        p = audit.build_portfolio("o", entries, NOW, 4, 3)
+        self.assertNotIn("_merge_hours", p["totals"])
+        for r in p["repos"]:
+            self.assertNotIn("_merge_hours", r)
+
+    def test_empty_velocity_safe(self):
+        # entries with no velocity block (back-compat) must not crash
+        p = audit.build_portfolio("o", [_entry(_report("o/x"))], NOW, 4, 3)
+        self.assertEqual(p["totals"]["merge_p50"], 0)
+
+
 def _spr(number, state, created, closed, repo, updated=None):
     return {
         "number": number, "state": state,
@@ -405,6 +456,142 @@ class ReportIntegrationTests(unittest.TestCase):
         self.assertIn("backlog", report)
         self.assertIn("size", report)
         self.assertEqual(report["backlog"]["open_total"], 1)
+
+    def test_report_includes_velocity(self):
+        prs = [
+            {"number": 1, "state": "MERGED",
+             "createdAt": "2026-06-10T00:00:00Z", "mergedAt": "2026-06-10T04:00:00Z",
+             "updatedAt": "2026-06-10T04:00:00Z", "author": {"login": "alice"},
+             "reviews": [{"author": {"login": "bob"}, "submittedAt": "2026-06-10T01:00:00Z"}],
+             "additions": 10, "deletions": 0, "changedFiles": 1},
+        ]
+        report = audit.build_report(prs, "owner/name", NOW)
+        self.assertIn("velocity", report)
+        self.assertEqual(report["velocity"]["merged_count"], 1)
+        self.assertEqual(report["velocity"]["merge_p50"], 4.0)
+        self.assertEqual(report["velocity"]["review_p50"], 1.0)
+
+
+def _rpr(*, created=None, merged=None, author="alice", reviews=None):
+    """A PR shaped for velocity: author login + inline reviews."""
+    return {
+        "createdAt": created,
+        "mergedAt": merged,
+        "author": {"login": author},
+        "reviews": reviews or [],
+    }
+
+
+def _rev(login, submitted):
+    return {"author": {"login": login}, "submittedAt": submitted, "state": "APPROVED"}
+
+
+class MergeHoursTests(unittest.TestCase):
+    def test_hours_delta(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-01T12:00:00Z")
+        self.assertEqual(audit._merge_hours(pr), 12.0)
+
+    def test_unmerged_is_none(self):
+        self.assertIsNone(audit._merge_hours(_rpr(created="2026-06-01T00:00:00Z", merged=None)))
+
+    def test_missing_created_is_none(self):
+        self.assertIsNone(audit._merge_hours(_rpr(created=None, merged="2026-06-01T00:00:00Z")))
+
+
+class FirstReviewHoursTests(unittest.TestCase):
+    def test_earliest_human_review(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T00:00:00Z", author="alice",
+                  reviews=[_rev("bob", "2026-06-01T06:00:00Z"),
+                           _rev("carol", "2026-06-01T03:00:00Z")])
+        self.assertEqual(audit._first_review_hours(pr), 3.0)
+
+    def test_excludes_self_review(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T00:00:00Z", author="alice",
+                  reviews=[_rev("alice", "2026-06-01T01:00:00Z"),
+                           _rev("bob", "2026-06-01T05:00:00Z")])
+        self.assertEqual(audit._first_review_hours(pr), 5.0)
+
+    def test_excludes_bot_review(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T00:00:00Z", author="alice",
+                  reviews=[_rev("coderabbitai", "2026-06-01T00:05:00Z"),
+                           _rev("dependabot[bot]", "2026-06-01T00:10:00Z"),
+                           _rev("bob", "2026-06-01T04:00:00Z")])
+        self.assertEqual(audit._first_review_hours(pr), 4.0)
+
+    def test_no_human_review_is_none(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T00:00:00Z", author="alice",
+                  reviews=[_rev("alice", "2026-06-01T01:00:00Z"),
+                           _rev("copilot", "2026-06-01T00:05:00Z")])
+        self.assertIsNone(audit._first_review_hours(pr))
+
+    def test_empty_reviews_is_none(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T00:00:00Z", reviews=[])
+        self.assertIsNone(audit._first_review_hours(pr))
+
+
+class VelocityTests(unittest.TestCase):
+    def _fixture(self):
+        # 3 merged PRs: merge times 2h, 10h, 30h; reviews: 1h, none(bot only), 5h
+        return [
+            _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-01T02:00:00Z",
+                 author="alice", reviews=[_rev("bob", "2026-06-01T01:00:00Z")]),
+            _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-01T10:00:00Z",
+                 author="alice", reviews=[_rev("copilot", "2026-06-01T00:05:00Z")]),
+            _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T06:00:00Z",
+                 author="alice", reviews=[_rev("carol", "2026-06-01T05:00:00Z")]),
+            _rpr(created="2026-06-01T00:00:00Z", merged=None, author="alice"),  # open, ignored
+        ]
+
+    def test_counts(self):
+        v = audit.velocity(self._fixture())
+        self.assertEqual(v["merged_count"], 3)
+        self.assertEqual(v["reviewed_count"], 2)
+        self.assertEqual(v["no_review_count"], 1)
+        self.assertEqual(v["reviewed_count"] + v["no_review_count"], v["merged_count"])
+
+    def test_merge_percentiles(self):
+        v = audit.velocity(self._fixture())
+        # sorted merge hours: [2, 10, 30]; nearest-rank p50 -> 10, p90 -> 30
+        self.assertEqual(v["merge_p50"], 10.0)
+        self.assertEqual(v["merge_p90"], 30.0)
+
+    def test_review_percentiles(self):
+        v = audit.velocity(self._fixture())
+        # sorted review hours: [1, 5]; p50 -> 1, p90 -> 5
+        self.assertEqual(v["review_p50"], 1.0)
+        self.assertEqual(v["review_p90"], 5.0)
+
+    def test_raw_lists_present(self):
+        v = audit.velocity(self._fixture())
+        self.assertEqual(sorted(v["_merge_hours"]), [2.0, 10.0, 30.0])
+        self.assertEqual(sorted(v["_review_hours"]), [1.0, 5.0])
+
+    def test_empty_is_safe(self):
+        v = audit.velocity([])
+        self.assertEqual(v["merged_count"], 0)
+        self.assertEqual(v["merge_p50"], 0)
+        self.assertEqual(v["no_review_count"], 0)
+        self.assertEqual(v["_merge_hours"], [])
+
+
+class IsBotTests(unittest.TestCase):
+    def test_bracket_bot_suffix(self):
+        self.assertTrue(audit._is_bot("dependabot[bot]"))
+        self.assertTrue(audit._is_bot("Some-App[bot]"))
+
+    def test_known_bots(self):
+        for login in ("coderabbitai", "copilot", "dependabot", "github-actions"):
+            self.assertTrue(audit._is_bot(login), login)
+
+    def test_case_insensitive(self):
+        self.assertTrue(audit._is_bot("CodeRabbitAI"))
+
+    def test_human_is_not_bot(self):
+        self.assertFalse(audit._is_bot("kishan-cashfree"))
+
+    def test_none_and_empty_safe(self):
+        self.assertFalse(audit._is_bot(None))
+        self.assertFalse(audit._is_bot(""))
 
 
 if __name__ == "__main__":

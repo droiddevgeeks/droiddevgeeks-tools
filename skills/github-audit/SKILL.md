@@ -1,6 +1,6 @@
 ---
 name: github-audit
-description: Audit GitHub pull-request activity three ways — a single repo (owner/name), a whole user/org's repos (portfolio), or one person's PRs across all repos (contributions). Use when the user asks to audit a repo, wants PR stats (opened/closed/merged) weekly or monthly, asks who is contributing or how active a developer/org is, wants backlog/stale-PR or hotfix/revert counts, or wants a portfolio/contribution dashboard. Accepts owner/name, a bare owner, a username, or any GitHub URL. Produces an HTML dashboard.
+description: Audit GitHub pull-request activity three ways — a single repo (owner/name), a whole user/org's repos (portfolio), or one person's PRs across all repos (contributions). Use when the user asks to audit a repo, wants PR stats (opened/closed/merged) weekly or monthly, asks who is contributing or how active a developer/org is, wants backlog/stale-PR or hotfix/revert counts, wants PR velocity / cycle time (time-to-merge or first-review latency), or wants a portfolio/contribution dashboard. Accepts owner/name, a bare owner, a username, or any GitHub URL. Produces an HTML dashboard.
 ---
 
 # GitHub Audit
@@ -57,9 +57,10 @@ person's contributions across all repos.
    - Author → `templates/author.html`, titled `Contribution Audit — <username>`.
 
 5. **Summarize** in one or two lines. Single repo: total PRs opened/merged, number
-   of contributors, hotfix/revert counts. Portfolio: active/total repos, org-wide
-   PRs opened/merged, contributor count. Author: PRs opened/merged, merge rate, and
-   how many repos/orgs the work spans — then point to the dashboard.
+   of contributors, hotfix/revert counts, and merge/first-review p50. Portfolio:
+   active/total repos, org-wide PRs opened/merged, contributor count, and org-wide
+   merge p50. Author: PRs opened/merged, merge rate, and how many repos/orgs the
+   work spans — then point to the dashboard.
 
 ## Notes
 

@@ -80,6 +80,10 @@ prints JSON to stdout; the skill substitutes it into the matching template's
 - **PR size** — lines-changed distribution (XS→XL), median, p90, largest PR.
   *(Repo and portfolio modes only — `gh search` omits diff size, so the
   contributions mode has no size data.)*
+- **Velocity** — time-to-merge and first-review latency (p50 + p90), calendar
+  time. Self-reviews and bots excluded; no-review PRs reported as a count.
+  *(Repo and portfolio modes only — `gh search` omits review/merge timing, so
+  the contributions mode has no velocity data.)*
 - **Hotfix / revert** counts (repo mode).
 
 ## Requirements
