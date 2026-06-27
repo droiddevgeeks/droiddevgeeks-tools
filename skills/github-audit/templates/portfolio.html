@@ -205,6 +205,14 @@
     tb.append(tr);
   });
   tbl.append(tb); wrap.append(tbl); panel.append(wrap);
+  if (DATA.totals && DATA.totals.merge_p50) {
+    const note = el("p", { className: "note" });
+    note.append(el("b", { textContent: "Merge p50 / Review p50" }));
+    note.append(document.createTextNode(" = median time (half of PRs faster) from open to merge / to first human review. Hover a cell for "));
+    note.append(el("b", { textContent: "p90" }));
+    note.append(document.createTextNode(" (the slow tail). Bots and self-reviews excluded."));
+    panel.append(note);
+  }
   app.append(panel);
 
   const contribs = DATA.contributors || [];
