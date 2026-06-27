@@ -147,6 +147,7 @@
     good: "#1a7f37", warn: "#9a6700", crit: "#cf222e", muted: "#8c959f",
   };
   const fmt = n => (typeof n === "number" ? n.toLocaleString() : n);
+  const fmtDur = h => (h == null ? "—" : (h < 24 ? Math.round(h) + "h" : Math.round(h / 24) + "d"));
   const el = (t, p = {}, ...kids) => {
     const n = Object.assign(document.createElement(t), p);
     for (const k of kids) if (k != null) n.append(k);
@@ -317,6 +318,27 @@
       value: b => b.count,
       color: b => sizeColor[b.label] || C.muted,
     }));
+    grid.append(panel);
+  }
+
+  if (DATA.velocity && DATA.velocity.merged_count > 0) {
+    const V = DATA.velocity;
+    const panel = el("div", { className: "panel" });
+    panel.append(el("h2", { textContent: "Velocity" }));
+    const chips = el("div", { className: "chiprow" });
+    const chip = (txt, val, cls) => {
+      const c = el("div", { className: "chip" + (cls ? " " + cls : "") });
+      c.append(el("b", { textContent: val })); c.append(document.createTextNode(" " + txt));
+      return c;
+    };
+    chips.append(chip("merge p50", fmtDur(V.merge_p50)));
+    chips.append(chip("merge p90", fmtDur(V.merge_p90), V.merge_p90 >= 168 ? "warn" : ""));
+    chips.append(chip("review p50", V.reviewed_count ? fmtDur(V.review_p50) : "—"));
+    chips.append(chip("review p90", V.reviewed_count ? fmtDur(V.review_p90) : "—",
+      V.reviewed_count && V.review_p90 >= 72 ? "warn" : ""));
+    panel.append(chips);
+    panel.append(el("p", { className: "hint",
+      textContent: `${V.no_review_count} of ${V.merged_count} merged with no human review.` }));
     grid.append(panel);
   }
   if (grid.childElementCount) app.append(grid);
