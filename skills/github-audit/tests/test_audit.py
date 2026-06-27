@@ -407,6 +407,63 @@ class ReportIntegrationTests(unittest.TestCase):
         self.assertEqual(report["backlog"]["open_total"], 1)
 
 
+def _rpr(*, created=None, merged=None, author="alice", reviews=None):
+    """A PR shaped for velocity: author login + inline reviews."""
+    return {
+        "createdAt": created,
+        "mergedAt": merged,
+        "author": {"login": author},
+        "reviews": reviews or [],
+    }
+
+
+def _rev(login, submitted):
+    return {"author": {"login": login}, "submittedAt": submitted, "state": "APPROVED"}
+
+
+class MergeHoursTests(unittest.TestCase):
+    def test_hours_delta(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-01T12:00:00Z")
+        self.assertEqual(audit._merge_hours(pr), 12.0)
+
+    def test_unmerged_is_none(self):
+        self.assertIsNone(audit._merge_hours(_rpr(created="2026-06-01T00:00:00Z", merged=None)))
+
+    def test_missing_created_is_none(self):
+        self.assertIsNone(audit._merge_hours(_rpr(created=None, merged="2026-06-01T00:00:00Z")))
+
+
+class FirstReviewHoursTests(unittest.TestCase):
+    def test_earliest_human_review(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T00:00:00Z", author="alice",
+                  reviews=[_rev("bob", "2026-06-01T06:00:00Z"),
+                           _rev("carol", "2026-06-01T03:00:00Z")])
+        self.assertEqual(audit._first_review_hours(pr), 3.0)
+
+    def test_excludes_self_review(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T00:00:00Z", author="alice",
+                  reviews=[_rev("alice", "2026-06-01T01:00:00Z"),
+                           _rev("bob", "2026-06-01T05:00:00Z")])
+        self.assertEqual(audit._first_review_hours(pr), 5.0)
+
+    def test_excludes_bot_review(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T00:00:00Z", author="alice",
+                  reviews=[_rev("coderabbitai", "2026-06-01T00:05:00Z"),
+                           _rev("dependabot[bot]", "2026-06-01T00:10:00Z"),
+                           _rev("bob", "2026-06-01T04:00:00Z")])
+        self.assertEqual(audit._first_review_hours(pr), 4.0)
+
+    def test_no_human_review_is_none(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T00:00:00Z", author="alice",
+                  reviews=[_rev("alice", "2026-06-01T01:00:00Z"),
+                           _rev("copilot", "2026-06-01T00:05:00Z")])
+        self.assertIsNone(audit._first_review_hours(pr))
+
+    def test_empty_reviews_is_none(self):
+        pr = _rpr(created="2026-06-01T00:00:00Z", merged="2026-06-02T00:00:00Z", reviews=[])
+        self.assertIsNone(audit._first_review_hours(pr))
+
+
 class IsBotTests(unittest.TestCase):
     def test_bracket_bot_suffix(self):
         self.assertTrue(audit._is_bot("dependabot[bot]"))

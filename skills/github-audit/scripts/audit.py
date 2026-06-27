@@ -114,6 +114,34 @@ def parse_dt(s):
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
 
 
+def _merge_hours(pr):
+    """Calendar hours from PR creation to merge; None if never merged."""
+    created = parse_dt(pr.get("createdAt"))
+    merged = parse_dt(pr.get("mergedAt"))
+    if not (created and merged):
+        return None
+    return (merged - created).total_seconds() / 3600.0
+
+
+def _first_review_hours(pr):
+    """Calendar hours to the earliest non-author, non-bot review; None if none."""
+    created = parse_dt(pr.get("createdAt"))
+    if not created:
+        return None
+    author = (pr.get("author") or {}).get("login")
+    times = []
+    for r in (pr.get("reviews") or []):
+        login = (r.get("author") or {}).get("login")
+        if not login or _is_bot(login) or login == author:
+            continue
+        t = parse_dt(r.get("submittedAt"))
+        if t:
+            times.append(t)
+    if not times:
+        return None
+    return (min(times) - created).total_seconds() / 3600.0
+
+
 def week_start(d):
     return d - timedelta(days=d.weekday())
 
