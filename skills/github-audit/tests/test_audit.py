@@ -406,6 +406,20 @@ class ReportIntegrationTests(unittest.TestCase):
         self.assertIn("size", report)
         self.assertEqual(report["backlog"]["open_total"], 1)
 
+    def test_report_includes_velocity(self):
+        prs = [
+            {"number": 1, "state": "MERGED",
+             "createdAt": "2026-06-10T00:00:00Z", "mergedAt": "2026-06-10T04:00:00Z",
+             "updatedAt": "2026-06-10T04:00:00Z", "author": {"login": "alice"},
+             "reviews": [{"author": {"login": "bob"}, "submittedAt": "2026-06-10T01:00:00Z"}],
+             "additions": 10, "deletions": 0, "changedFiles": 1},
+        ]
+        report = audit.build_report(prs, "owner/name", NOW)
+        self.assertIn("velocity", report)
+        self.assertEqual(report["velocity"]["merged_count"], 1)
+        self.assertEqual(report["velocity"]["merge_p50"], 4.0)
+        self.assertEqual(report["velocity"]["review_p50"], 1.0)
+
 
 def _rpr(*, created=None, merged=None, author="alice", reviews=None):
     """A PR shaped for velocity: author login + inline reviews."""

@@ -326,6 +326,7 @@ def build_report(prs, repo, now, weeks=4, months=3):
     contribs = contributors(in_window)
     backlog_stats = backlog(prs, now)
     size_stats = size_distribution(in_window)
+    velocity_stats = velocity(in_window)
     totals = {
         "opened": len(in_window),
         "closed": sum(1 for pr in in_window if pr.get("closedAt")),
@@ -343,6 +344,7 @@ def build_report(prs, repo, now, weeks=4, months=3):
         "contributors": contribs,
         "backlog": backlog_stats,
         "size": size_stats,
+        "velocity": velocity_stats,
         "totals": totals,
     }
 
