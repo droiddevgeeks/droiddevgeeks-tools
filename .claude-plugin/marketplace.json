@@ -9,6 +9,14 @@
       "name": "droiddevgeeks-tools",
       "source": "./",
       "description": "droiddevgeeks's Claude Code tools. Includes github-audit: audit GitHub PR activity for a repo, a user/org portfolio, or one person's contributions, rendered as a self-contained HTML dashboard."
+    },
+    {
+      "name": "cc-sessions",
+      "source": {
+        "source": "github",
+        "repo": "droiddevgeeks/cc-sessions"
+      },
+      "description": "Clean up Claude Code without losing work you forgot you had: sessions, RAM, transcripts and /tmp scratchpads, with unpushed work saved before anything is deleted."
     }
   ]
 }

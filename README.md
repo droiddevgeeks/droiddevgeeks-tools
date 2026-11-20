@@ -4,6 +4,15 @@ A Claude Code plugin of droiddevgeeks's tools. Ships one skill, **github-audit**
 which audits GitHub pull-request activity and renders a self-contained HTML
 dashboard (published as a Claude Artifact).
 
+## Also in this marketplace: cc-sessions
+
+**Clean up Claude Code without losing work you forgot you had.** See running sessions and their RAM, transcripts, and `/tmp` scratchpads full of cloned repos, then delete safely: live sessions are never touched, unpushed commits are shown and saved to a git bundle first, and every deletion is logged.
+
+    /plugin marketplace add droiddevgeeks/droiddevgeeks-tools
+    /plugin install cc-sessions@droiddevgeeks
+
+Then use `/sessions`, or ask Claude to "clean up my sessions". Details: [droiddevgeeks/cc-sessions](https://github.com/droiddevgeeks/cc-sessions).
+
 ## What it does — three modes
 
 The reference you give decides the mode:
